@@ -1,7 +1,6 @@
 # Ignore data directories
-/data1/*
-/data2/*
-/FFT/*
+data/raw_data/*
+
 
 # Ignore VSCode settings and Python cache files
 .vscode/*
