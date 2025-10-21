@@ -1,0 +1,142 @@
+import numpy as np
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc
+
+
+def plot_feature_histograms(data):
+    '''Histograms for each numeric feature'''
+
+    data.select_dtypes(include=[np.number]).hist(bins=30, figsize=(15, 10), layout=(2, -1))
+    plt.suptitle('Histograms of Features', fontsize=16)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.show()
+
+def plot_feature_boxplots(data):
+    '''Boxplots for each numeric feature'''
+
+    df_numeric = data.select_dtypes(include=[np.number])
+    num_features = df_numeric.shape[1]
+    cols = 2
+    rows = (num_features + 1) // cols
+
+    fig, axes = plt.subplots(rows, cols, figsize=(12, 2.5 * rows))
+    axes = axes.flatten()
+
+    for i, col in enumerate(df_numeric.columns):
+        sns.boxplot(x=df_numeric[col], ax=axes[i], color="skyblue")
+        axes[i].set_title(f'Boxplot of {col}')
+        axes[i].set_xlabel("")
+
+    # Hide any unused subplots
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
+
+
+def visualize_flow_rate(data):
+    '''Visualize flow rate and pump outlet pressure over time'''
+
+    plt.figure(figsize=(12,6))
+    plt.plot(data.index, data["Flow rate (Mean)"], label="Flow rate")
+    plt.plot(data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure")
+
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.title("Flow rate & Pump outlet pressure over time")
+    plt.legend()
+    plt.show()
+
+
+def plot_flow_pressure_drop_temp(data):
+    '''Plot Flow rate, Pump outlet pressure, Drop pressure and Temperature over time'''
+
+    plt.figure(figsize=(16,8))
+    colors = plt.cm.tab20.colors  # Use a colormap for up to 20 columns, cycle if more
+    for i, col in enumerate(data.columns):
+        plt.plot(data.index, data[col], label=col, color=colors[i % len(colors)])
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.title("All Signals Over Time")
+    plt.legend(loc='upper left', bbox_to_anchor=(1,1))
+    plt.tight_layout()
+    plt.show()
+
+
+def visualize_plug_event(data):
+    '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
+
+    plt.figure(figsize=(12,6))
+
+    # Plot all data
+    plt.plot(data.index, data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
+    plt.plot(data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
+
+    # Highlight Plug=1 events
+    plug_events = data[data["Plug"] == 1]
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label="Plug=1 (Flow)", zorder=5)
+    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label="Plug=1 (Pressure)", zorder=5)
+
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.title("Plug=1 Events Highlighted on Flow and Pressure")
+    plt.legend()
+    plt.show()
+
+
+def plot_feature_importance(model, X_train):
+    '''Plot feature importance from a trained model'''
+
+    importances = model.feature_importances_
+    feature_names = X_train.columns
+    feat_imp = pd.Series(importances, index=feature_names).sort_values(ascending=False)
+
+    plt.figure(figsize=(10, 5))
+    sns.barplot(x=feat_imp.values, y=feat_imp.index, palette="viridis")
+    plt.title('Feature Importance from RandomForest')
+    plt.xlabel('Importance')
+    plt.ylabel('Feature')
+    plt.tight_layout()
+    plt.show()
+
+    return feat_imp
+
+def plot_correlation_matrix(X_train):
+    '''Plot correlation matrix of features to identify relationships'''
+
+    corr = X_train.corr()
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", cbar=True)
+    plt.title('Feature Correlation Matrix')
+    plt.tight_layout()
+    plt.show()
+
+def plot_roc_curve(y_true, y_pred_proba):
+    '''Plot ROC curve'''
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='blue', label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='red', linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc='lower right')
+    plt.show()
+
+def plot_confusion_matrix(y_true, y_pred):
+    '''Plot confusion matrix'''
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix')
+    plt.show()
