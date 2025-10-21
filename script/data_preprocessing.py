@@ -29,6 +29,11 @@ def create_target_column(df):
 
     df["Plug"] = np.where((flow < flow_thresh) & (pressure > pressure_thresh), 1, 0)
 
+def create_future_target(df, shift=-10):
+    '''Create target column 'Plug_future' by shifting 'Plug' column'''
+    # Predict plug event 10 steps ahead
+    df['Plug_future'] = df['Plug'].shift(shift)
+    df.dropna(subset=['Plug_future'], inplace=True)
 
 def train_val_test_split(X,y):
     '''Split data into train, validation, and test sets without shuffling'''
@@ -57,6 +62,24 @@ def scale_features(X_train, X_val, X_test):
     
     return X_train_scaled, X_val_scaled, X_test_scaled
 
+
+def remove_low_importance_features(X_train, X_val, X_test, feat_imp, threshold=0.04):
+    ''' Remove low-importance features '''
+
+    low_importance = feat_imp[feat_imp < threshold].index
+    X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train, X_val, X_test, low_importance)
+
+    return X_train_reduced, X_val_reduced, X_test_reduced
+
+def remove_highly_correlated_features(X_train_reduced, X_val_reduced, X_test_reduced, threshold=0.9):
+    ''' Remove one of each pair of highly correlated features '''
+
+    corr_matrix = X_train_reduced.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
+    X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train_reduced, X_val_reduced, X_test_reduced, to_drop)
+
+    return X_train_reduced, X_val_reduced, X_test_reduced
 
 def reduce_features(X_train, X_val, X_test, features_to_remove):
     '''Remove specified features (columns) from datasets'''
