@@ -9,7 +9,7 @@ import joblib
 from imblearn.under_sampling import RandomUnderSampler
 from xgboost import XGBClassifier
 import pandas as pd
-
+from pathlib import Path
 
 
 def baseline_model(X_train, y_train, X_val, y_val):
@@ -101,18 +101,23 @@ def svm_model(X_train_scaled, y_train, X_val_scaled, y_val):
 
 
 
-def save_model(model, path):
-    """Save model / pipeline to disk."""
+def save_model(model, path_name):
+    '''Save model / pipeline to disk'''
+    path = Path(path_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, path)
     print(f"Saved model to {path}")
 
 
 def load_model(path):
-    """Load model / pipeline from disk."""
+    '''Load model / pipeline from disk'''
+
     return joblib.load(path)
 
 
 def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val):
+    '''Perform time-series aware hyperparameter search'''
+
     keys = list(param_grid.keys())
     combinations = list(product(*param_grid.values()))
     
@@ -144,11 +149,13 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
 
 def find_best_model(X_train, y_train, X_val, y_val):
+    '''Compare multiple models with hyperparameter tuning and return the best one'''
+
     models = {
         "Random Forest": RandomForestClassifier(),
         "Logistic Regression": LogisticRegression(max_iter=1000),
         "SVM": SVC(),
-        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+        "XGBoost": XGBClassifier(eval_metric='logloss')
     }
 
     hyperparameters = {
@@ -197,3 +204,19 @@ def find_best_model(X_train, y_train, X_val, y_val):
     best_model_name = max(best_of_all_models, key=lambda k: best_of_all_models[k][2])
     print(f"\n🏆 Best overall model: {best_model_name} with validation accuracy: {best_of_all_models[best_model_name][2]:.4f}")
     return best_of_all_models[best_model_name][0]
+
+def retrain_final_model(X_train, X_val, y_train, y_val, best_model):
+    '''Retrain the best model on the train + val'''
+
+    X_combined = pd.concat([X_train, X_val])
+    y_combined = pd.concat([y_train, y_val])
+
+    best_model.fit(X_combined, y_combined)
+    return best_model
+
+def evaluate_model_on_test(model, X_test, y_test):
+    '''Evaluate the final model on the test dataset'''
+
+    y_test_pred = model.predict(X_test)
+    print("Test set results:")
+    print(classification_report(y_test, y_test_pred, digits=3))

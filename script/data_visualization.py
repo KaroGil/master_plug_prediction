@@ -97,7 +97,7 @@ def plot_feature_importance(model, X_train):
     feat_imp = pd.Series(importances, index=feature_names).sort_values(ascending=False)
 
     plt.figure(figsize=(10, 5))
-    sns.barplot(x=feat_imp.values, y=feat_imp.index, palette="viridis")
+    sns.barplot(x=feat_imp.values, y=feat_imp.index, palette="viridis", hue=feat_imp.values, legend=False)
     plt.title('Feature Importance from RandomForest')
     plt.xlabel('Importance')
     plt.ylabel('Feature')
