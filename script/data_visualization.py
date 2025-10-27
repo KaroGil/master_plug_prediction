@@ -14,6 +14,7 @@ def plot_feature_histograms(data):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
+
 def plot_feature_boxplots(data):
     '''Boxplots for each numeric feature'''
 
@@ -105,6 +106,7 @@ def plot_feature_importance(model, X_train):
 
     return feat_imp
 
+
 def plot_correlation_matrix(X_train):
     '''Plot correlation matrix of features to identify relationships'''
 
@@ -114,6 +116,7 @@ def plot_correlation_matrix(X_train):
     plt.title('Feature Correlation Matrix')
     plt.tight_layout()
     plt.show()
+
 
 def plot_roc_curve(y_true, y_pred_proba):
     '''Plot ROC curve'''
@@ -130,6 +133,7 @@ def plot_roc_curve(y_true, y_pred_proba):
     plt.title('Receiver Operating Characteristic (ROC) Curve')
     plt.legend(loc='lower right')
     plt.show()
+
 
 def plot_confusion_matrix(y_true, y_pred):
     '''Plot confusion matrix'''

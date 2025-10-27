@@ -18,6 +18,17 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     
     return df
 
+def load_split_data(dataset_name):
+    '''Load pre-saved processed data from CSV files'''
+    X_train = pd.read_csv(f'../data/processed_data/{dataset_name}_X_train.csv')
+    X_val = pd.read_csv(f'../data/processed_data/{dataset_name}_X_val.csv')
+    X_test = pd.read_csv(f'../data/processed_data/{dataset_name}_X_test.csv')
+    y_train = pd.read_csv(f'../data/processed_data/{dataset_name}_y_train.csv')
+    y_val = pd.read_csv(f'../data/processed_data/{dataset_name}_y_val.csv')
+    y_test = pd.read_csv(f'../data/processed_data/{dataset_name}_y_test.csv')
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
 def create_target_column(df):
     # Make the target column based on tresholds
     flow = df["Flow rate (Mean)"]
@@ -45,7 +56,7 @@ def train_val_test_split(X,y):
 def split_data(df):
     '''Split data into features and target, then into train, val, test sets'''
     X = df.drop(columns=['Plug', 'Plug_future'])
-    y = df['Plug_future']
+    y = df['Plug_future'].copy()
 
     X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
 
@@ -90,3 +101,11 @@ def reduce_features(X_train, X_val, X_test, features_to_remove):
 
     return X_train_reduced, X_val_reduced, X_test_reduced
 
+def save_data(X_train, X_val, X_test, y_train, y_val, y_test, dataset_name):
+    '''Save datasets to CSV files'''
+    X_train.to_csv(f'../data/processed_data/{dataset_name}_X_train.csv', index=False)
+    X_val.to_csv(f'../data/processed_data/{dataset_name}_X_val.csv', index=False)
+    X_test.to_csv(f'../data/processed_data/{dataset_name}_X_test.csv', index=False)
+    y_train.to_csv(f'../data/processed_data/{dataset_name}_y_train.csv', index=False)
+    y_val.to_csv(f'../data/processed_data/{dataset_name}_y_val.csv', index=False)
+    y_test.to_csv(f'../data/processed_data/{dataset_name}_y_test.csv', index=False)
