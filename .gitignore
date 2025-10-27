@@ -8,4 +8,5 @@ data/processed_data/*
 # Ignore VSCode settings and Python cache files
 .vscode/*
 __pycache__/*
+*.pyc
 .DS_Store
