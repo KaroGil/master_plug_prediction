@@ -144,3 +144,73 @@ def plot_confusion_matrix(y_true, y_pred):
     plt.ylabel('True Label')
     plt.title('Confusion Matrix')
     plt.show()
+
+
+def ROC_Curve(y_true, y_pred_proba):
+    '''Plot ROC curve'''
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='blue', label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='red', linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc='lower right')
+    plt.show()
+
+
+def plot_precision_recall_curve(y_true, y_pred_proba):
+    '''Plot Precision-Recall curve'''
+    from sklearn.metrics import precision_recall_curve, average_precision_score
+
+    precision, recall, _ = precision_recall_curve(y_true, y_pred_proba)
+    avg_precision = average_precision_score(y_true, y_pred_proba)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall, precision, color='blue', label=f'Precision-Recall curve (AP = {avg_precision:.2f})')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve')
+    plt.legend(loc='lower left')
+    plt.show()
+
+
+def learning_curve(train_sizes, train_scores, val_scores):
+    '''Plot learning curve'''
+
+    train_mean = np.mean(train_scores, axis=1)
+    val_mean = np.mean(val_scores, axis=1)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(train_sizes, train_mean, 'o-', color='blue', label='Training score')
+    plt.plot(train_sizes, val_mean, 'o-', color='orange', label='Validation score')
+    plt.title('Learning Curve')
+    plt.xlabel('Training Set Size')
+    plt.ylabel('Score')
+    plt.legend(loc='best')
+    plt.grid()
+    plt.show()
+
+
+def calibration_curve(y_true, y_pred_proba, n_bins=10):
+    '''Plot calibration curve'''
+
+    from sklearn.calibration import calibration_curve
+
+    prob_true, prob_pred = calibration_curve(y_true, y_pred_proba, n_bins=n_bins)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(prob_pred, prob_true, marker='o', label='Calibration curve')
+    plt.plot([0, 1], [0, 1], linestyle='--', label='Perfectly calibrated')
+    plt.title('Calibration Curve')
+    plt.xlabel('Mean Predicted Probability')
+    plt.ylabel('Fraction of Positives')
+    plt.legend(loc='best')
+    plt.grid()
+    plt.show()

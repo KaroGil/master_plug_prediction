@@ -4,13 +4,63 @@ from sklearn.dummy import DummyClassifier
 from sklearn.metrics import classification_report, accuracy_score
 from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 import joblib
 from imblearn.under_sampling import RandomUnderSampler
 from xgboost import XGBClassifier
 import pandas as pd
+import numpy as np
 from pathlib import Path
+import script.data_visualization as dv
 
+
+
+# MODEL SAVING AND LOADING
+
+def save_model(model, path_name):
+    '''Save model / pipeline to disk'''
+    path = Path(path_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, path)
+    print(f"Saved model to {path}")
+
+
+def load_model(path):
+    '''Load model / pipeline from disk'''
+
+    return joblib.load(path)
+
+
+# RESAMPLING TECHNIQUES
+
+def SMOTE_model(X_train, y_train):
+    '''Apply SMOTE to balance classes in training data'''
+
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    print('After SMOTE:', y_train_resampled.value_counts())
+    print('After SMOTE (%):', y_train_resampled.value_counts(normalize=True))
+
+    return X_train_resampled, y_train_resampled
+
+
+def undersample_model(X_train, y_train, sampling_strategy=0.5, random_state=42):
+    """
+    Apply Random Under-Sampling to balance classes in training data
+    """
+    rus = RandomUnderSampler(sampling_strategy=sampling_strategy, random_state=random_state)
+    X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
+
+    print('After undersampling:', y_resampled.value_counts())
+    print('After undersampling (%):', y_resampled.value_counts(normalize=True))
+
+    return X_resampled, y_resampled
+
+
+# BASELINE MODEL 
 
 def baseline_model(X_train, y_train, X_val, y_val):
     baseline = DummyClassifier(strategy="most_frequent")
@@ -30,92 +80,9 @@ def train_and_evaluate_rf(X_train, X_val, y_train, y_val):
     print(f"Validation accuracy: {val_score:.3f}")
     return model
 
+# HYPERPARAMETER TUNING AND MODEL COMPARISON
 
-def SMOTE_model(X_train, y_train, X_val, y_val):
-    '''Train RandomForest model with SMOTE to handle class imbalance'''
-
-    smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    print('After SMOTE:', y_train_resampled.value_counts())
-    print('After SMOTE (%):', y_train_resampled.value_counts(normalize=True))
-
-
-    # Train model on resampled data
-    model = RandomForestClassifier(random_state=42)
-    model.fit(X_train_resampled, y_train_resampled)
-
-    # Evaluate on validation and test sets
-    y_val_pred = model.predict(X_val)
-    print('Validation set results:')
-    print(classification_report(y_val, y_val_pred, digits=3))
-    return model, X_train_resampled, y_train_resampled
-
-
-def undersample_model(X_train, y_train, X_val, y_val, sampling_strategy='auto', random_state=42):
-    """
-    Undersample majority class with RandomUnderSampler and train RandomForest.
-    sampling_strategy: 'auto' or float / dict per imbalanced-learn docs.
-    """
-    rus = RandomUnderSampler(sampling_strategy=sampling_strategy, random_state=random_state)
-    X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
-
-    print('After undersampling:', y_resampled.value_counts())
-    print('After undersampling (%):', y_resampled.value_counts(normalize=True))
-
-    model = RandomForestClassifier(random_state=random_state)
-    model.fit(X_resampled, y_resampled)
-
-    y_val_pred = model.predict(X_val)
-    print('Validation set results (undersample):')
-    print(classification_report(y_val, y_val_pred, digits=3))
-
-    return model
-
-
-# TODO: is this used?
-def logistic_regression_model(X_train_scaled, y_train, X_val_scaled, y_val):
-    # Train the model
-    logreg = LogisticRegression(max_iter=1000, random_state=42)
-    logreg.fit(X_train_scaled, y_train)
-
-    # Evaluate the model
-    val_pred = logreg.predict(X_val_scaled)
-    print('Validation set results for logistic regression:')
-    print(classification_report(y_val, val_pred, digits=3))
-    return logreg
-
-
-# TODO: is this used?
-def svm_model(X_train_scaled, y_train, X_val_scaled, y_val):
-    '''Train and evaluate SVM model'''
-
-    # Train the model
-    svm = SVC(random_state=42)
-    svm.fit(X_train_scaled, y_train)
-
-    # Evaluate the model
-    val_pred = svm.predict(X_val_scaled)
-    print('Validation set results for SVM:')
-    print(classification_report(y_val, val_pred, digits=3))
-    return svm
-
-
-
-def save_model(model, path_name):
-    '''Save model / pipeline to disk'''
-    path = Path(path_name)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, path)
-    print(f"Saved model to {path}")
-
-
-def load_model(path):
-    '''Load model / pipeline from disk'''
-
-    return joblib.load(path)
-
-
-def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val):
+def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val, verbose_level=1):
     '''Perform time-series aware hyperparameter search'''
 
     keys = list(param_grid.keys())
@@ -125,7 +92,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
     best_params = None
     best_model = None
 
-    print(f"Searching over {len(combinations)} hyperparameter combinations...")
+    print(f"Searching over {len(combinations)} hyperparameter combinations..." if verbose_level > 0 else "")
 
     for combo in combinations:
         params = dict(zip(keys, combo))
@@ -135,7 +102,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
         val_pred = model.predict(X_val)
         val_acc = accuracy_score(y_val, val_pred)
 
-        print(f"Params: {params} | Validation Accuracy = {val_acc:.4f}")
+        print(f"Params: {params} | Validation Accuracy = {val_acc:.4f}" if verbose_level > 1 else "")
 
         if val_acc > best_score:
             best_score = val_acc
@@ -148,14 +115,16 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
     return best_model, best_params, best_score
 
 
-def find_best_model(X_train, y_train, X_val, y_val):
-    '''Compare multiple models with hyperparameter tuning and return the best one'''
-
+def get_models_and_params():
     models = {
         "Random Forest": RandomForestClassifier(),
         "Logistic Regression": LogisticRegression(max_iter=1000),
         "SVM": SVC(),
-        "XGBoost": XGBClassifier(eval_metric='logloss')
+        "XGBoost": XGBClassifier(eval_metric='logloss'),
+        "KNN": KNeighborsClassifier(),
+        "Naive Bayes": GaussianNB(),
+        "ANN": MLPClassifier(max_iter=500),
+        "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
     }
 
     hyperparameters = {
@@ -175,8 +144,33 @@ def find_best_model(X_train, y_train, X_val, y_val):
             'n_estimators': [100, 200],
             'max_depth': [6, 8],
             'learning_rate': [0.1, 0.01]
+        },
+        "KNN": {
+            'n_neighbors': [3, 5, 7],
+            'weights': ['uniform', 'distance']
+        },
+        "Naive Bayes": {
+            'var_smoothing': [1e-9, 1e-8, 1e-7]
+        },
+        "ANN": {
+            'hidden_layer_sizes': [(100,), (100, 50)],
+            'activation': ['relu', 'tanh'],
+            'solver': ['adam', 'sgd']
+        },
+        "CNN": {
+            'hidden_layer_sizes': [(100, 50), (150, 75)],
+            'activation': ['relu'],
+            'solver': ['adam']
         }
     }
+
+    return models, hyperparameters
+
+
+def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=False):
+    '''Compare multiple models with hyperparameter tuning and return the best one'''
+
+    models, hyperparameters = get_models_and_params()
 
     best_of_all_models = {}
 
@@ -186,11 +180,26 @@ def find_best_model(X_train, y_train, X_val, y_val):
             model,
             hyperparameters[name],
             X_train, y_train,
-            X_val, y_val
+            X_val, y_val,
+            verbose_level
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 
         print(f"Best {name} model with params: {best_params} achieved validation accuracy: {best_score:.4f}")
+        if visualize:
+            print(f"Visualizing {name} performance on validation set:")
+            y_val_pred = best_model.predict(X_val)
+            dv.plot_confusion_matrix(y_val, y_val_pred)
+
+            train_sizes, train_scores, val_scores = get_learning_curve_data(best_model, X_train, y_train)
+            dv.learning_curve(train_sizes, train_scores, val_scores)
+            try:
+                y_pred_proba = best_model.predict_proba(X_val)[:, 1]
+                dv.calibration_curve(y_val, y_pred_proba)
+                dv.plot_roc_curve(y_val, best_model.predict_proba(X_val)[:, 1])
+                dv.plot_precision_recall_curve(y_val, best_model.predict_proba(X_val)[:, 1])    
+            except:
+                print("Model does not support predict_proba; skipping some visualizations.")
 
     # Create a summary table of best validation accuracies
     summary = pd.DataFrame([
@@ -205,6 +214,9 @@ def find_best_model(X_train, y_train, X_val, y_val):
     print(f"\n🏆 Best overall model: {best_model_name} with validation accuracy: {best_of_all_models[best_model_name][2]:.4f}")
     return best_of_all_models[best_model_name][0]
 
+
+# TEST SET EVALUATION
+
 def retrain_final_model(X_train, X_val, y_train, y_val, best_model):
     '''Retrain the best model on the train + val'''
 
@@ -214,9 +226,26 @@ def retrain_final_model(X_train, X_val, y_train, y_val, best_model):
     best_model.fit(X_combined, y_combined)
     return best_model
 
+
 def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
 
     y_test_pred = model.predict(X_test)
+    print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3))
+    return y_test_pred
+
+
+# LEARNING CURVE DATA
+
+def get_learning_curve_data(model, X_train, y_train, cv=5, train_sizes=np.linspace(0.1, 1.0, 10)):
+    '''Get data for learning curve plotting'''
+
+    from sklearn.model_selection import learning_curve
+
+    train_sizes, train_scores, val_scores = learning_curve(
+        model, X_train, y_train, cv=cv, train_sizes=train_sizes, scoring='accuracy', n_jobs=-1
+    )
+
+    return train_sizes, train_scores, val_scores
