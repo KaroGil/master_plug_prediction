@@ -2,8 +2,9 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.calibration import calibration_curve
+
 
 
 def plot_feature_histograms(data):
@@ -118,99 +119,102 @@ def plot_correlation_matrix(X_train):
     plt.show()
 
 
-def plot_roc_curve(y_true, y_pred_proba):
-    '''Plot ROC curve'''
-    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
-    roc_auc = auc(fpr, tpr)
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='blue', label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='red', linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
-    plt.legend(loc='lower right')
-    plt.show()
-
-
-def plot_confusion_matrix(y_true, y_pred):
+def plot_confusion_matrix(y_true, y_pred, standalone=True, ax=None):
     '''Plot confusion matrix'''
     cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(6, 5))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.title('Confusion Matrix')
-    plt.show()
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.set_title("Confusion Matrix")
+
+    if standalone:
+        plt.show()
 
 
-def ROC_Curve(y_true, y_pred_proba):
-    '''Plot ROC curve'''
-    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
-    roc_auc = auc(fpr, tpr)
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='blue', label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='red', linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic (ROC) Curve')
-    plt.legend(loc='lower right')
-    plt.show()
+def get_y_scores(model, X):
+    """Returns continuous scores for PR / Calibration curves."""
+    
+    if hasattr(model, "predict_proba"):
+        return model.predict_proba(X)[:, 1]
+    elif hasattr(model, "decision_function"):
+        return model.decision_function(X)
+    else:
+        raise ValueError(
+            f"Model {type(model).__name__} does not provide probability or decision scores."
+        )
 
 
-def plot_precision_recall_curve(y_true, y_pred_proba):
-    '''Plot Precision-Recall curve'''
-    from sklearn.metrics import precision_recall_curve, average_precision_score
 
-    precision, recall, _ = precision_recall_curve(y_true, y_pred_proba)
-    avg_precision = average_precision_score(y_true, y_pred_proba)
+def plot_precision_recall_curve(y_true, y_scores, standalone=True, ax=None):
+    precision, recall, _ = precision_recall_curve(y_true, y_scores)
+    avg_precision = average_precision_score(y_true, y_scores)
 
-    plt.figure(figsize=(8, 6))
-    plt.plot(recall, precision, color='blue', label=f'Precision-Recall curve (AP = {avg_precision:.2f})')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.title('Precision-Recall Curve')
-    plt.legend(loc='lower left')
-    plt.show()
+    if ax is None:
+        _, ax = plt.subplots()
+
+    ax.plot(recall, precision, label=f"AP = {avg_precision:.2f}")
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_title("Precision-Recall Curve")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.05)
+    ax.legend()
+
+    if standalone:
+        plt.show()
 
 
-def learning_curve(train_sizes, train_scores, val_scores):
-    '''Plot learning curve'''
-
+def learning_curve(train_sizes, train_scores, val_scores, standalone=True, ax=None):
     train_mean = np.mean(train_scores, axis=1)
     val_mean = np.mean(val_scores, axis=1)
 
-    plt.figure(figsize=(8, 6))
-    plt.plot(train_sizes, train_mean, 'o-', color='blue', label='Training score')
-    plt.plot(train_sizes, val_mean, 'o-', color='orange', label='Validation score')
-    plt.title('Learning Curve')
-    plt.xlabel('Training Set Size')
-    plt.ylabel('Score')
-    plt.legend(loc='best')
-    plt.grid()
-    plt.show()
+    if ax is None:
+        _, ax = plt.subplots()
+
+    ax.plot(train_sizes, train_mean, 'o-', label="Training")
+    ax.plot(train_sizes, val_mean, 'o-', label="Validation")
+    ax.set_xlabel("Training Set Size")
+    ax.set_ylabel("Score")
+    ax.set_title("Learning Curve")
+    ax.legend()
+    ax.grid()
+
+    if standalone:
+        plt.show()
 
 
-def calibration_curve(y_true, y_pred_proba, n_bins=10):
-    '''Plot calibration curve'''
+def plot_calibration_curve(y_true, y_scores, n_bins=10, standalone=True, ax=None):
+    prob_true, prob_pred = calibration_curve(y_true, y_scores, n_bins=n_bins)
 
-    from sklearn.calibration import calibration_curve
+    if ax is None:
+        _, ax = plt.subplots()
 
-    prob_true, prob_pred = calibration_curve(y_true, y_pred_proba, n_bins=n_bins)
+    ax.plot(prob_pred, prob_true, marker='o', label='Model')
+    ax.plot([0, 1], [0, 1], linestyle='--', label='Perfect')
+    ax.set_xlabel("Predicted Probability")
+    ax.set_ylabel("True Fraction")
+    ax.set_title("Calibration Curve")
+    ax.legend()
+    ax.grid()
 
-    plt.figure(figsize=(8, 6))
-    plt.plot(prob_pred, prob_true, marker='o', label='Calibration curve')
-    plt.plot([0, 1], [0, 1], linestyle='--', label='Perfectly calibrated')
-    plt.title('Calibration Curve')
-    plt.xlabel('Mean Predicted Probability')
-    plt.ylabel('Fraction of Positives')
-    plt.legend(loc='best')
-    plt.grid()
+    if standalone:
+        plt.show()
+
+
+def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
+    y_pred = model.predict(X_test)
+    y_scores = get_y_scores(model, X_test)  # works for all supported model types
+
+    _, ax = plt.subplots(2, 2, figsize=(18, 10))
+
+    plot_confusion_matrix(y_test, y_pred, standalone=False, ax=ax[0, 0])
+    learning_curve(train_sizes, train_scores, val_scores, standalone=False, ax=ax[1, 0])
+    plot_precision_recall_curve(y_test, y_scores, standalone=False, ax=ax[0, 1])
+    plot_calibration_curve(y_test, y_scores, standalone=False, ax=ax[1, 1])
+
+    plt.tight_layout()
     plt.show()

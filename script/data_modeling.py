@@ -117,9 +117,9 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
 def get_models_and_params():
     models = {
-        "Random Forest": RandomForestClassifier(),
-        "Logistic Regression": LogisticRegression(max_iter=1000),
-        "SVM": SVC(),
+        "Random Forest": RandomForestClassifier(class_weight='balanced'),
+        "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
+        "SVM": SVC(probability=True, class_weight='balanced'),
         "XGBoost": XGBClassifier(eval_metric='logloss'),
         "KNN": KNeighborsClassifier(),
         "Naive Bayes": GaussianNB(),
@@ -186,29 +186,26 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
         best_of_all_models[name] = (best_model, best_params, best_score)
 
         print(f"Best {name} model with params: {best_params} achieved validation accuracy: {best_score:.4f}")
-        if visualize:
+        if visualize: #TODO: fix visualization for all models (e.g. get_y_scores may fail)
             print(f"Visualizing {name} performance on validation set:")
             y_val_pred = best_model.predict(X_val)
             dv.plot_confusion_matrix(y_val, y_val_pred)
 
             train_sizes, train_scores, val_scores = get_learning_curve_data(best_model, X_train, y_train)
             dv.learning_curve(train_sizes, train_scores, val_scores)
-            try:
-                y_pred_proba = best_model.predict_proba(X_val)[:, 1]
-                dv.calibration_curve(y_val, y_pred_proba)
-                dv.plot_roc_curve(y_val, best_model.predict_proba(X_val)[:, 1])
-                dv.plot_precision_recall_curve(y_val, best_model.predict_proba(X_val)[:, 1])    
-            except:
-                print("Model does not support predict_proba; skipping some visualizations.")
 
-    # Create a summary table of best validation accuracies
-    summary = pd.DataFrame([
+            y_pred_proba = dv.get_y_scores(best_model, X_val)
+            dv.plot_calibration_curve(y_val, y_pred_proba)
+            dv.plot_precision_recall_curve(y_val, y_pred_proba)    
+
+    summary = [
         {"Model": name, "Best Validation Accuracy": score}
         for name, (_, _, score) in best_of_all_models.items()
-    ])
+    ]
 
     print("\nSummary of Best Validation Accuracies:")
-    print(summary.to_string(index=False))
+    for item in summary:
+        print(f"{item['Model']}: {item['Best Validation Accuracy']:.4f}")
 
     best_model_name = max(best_of_all_models, key=lambda k: best_of_all_models[k][2])
     print(f"\n🏆 Best overall model: {best_model_name} with validation accuracy: {best_of_all_models[best_model_name][2]:.4f}")
@@ -234,6 +231,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3))
+    print("Accuracy:", accuracy_score(y_test, y_test_pred))
     return y_test_pred
 
 

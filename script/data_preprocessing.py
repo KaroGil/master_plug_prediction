@@ -37,7 +37,7 @@ def create_target_column(df):
     flow = df["Flow rate (Mean)"]
     pressure = df["Pump outlet pressure (Mean)"]
 
-    # thresholds
+    # Thresholds
     flow_thresh = flow.median() * 0.7
     pressure_thresh = pressure.median() * 1.3
 
@@ -77,7 +77,7 @@ def split_data(df):
 
 def print_distribution(y, name):
     '''Print class distribution of the target variable'''
-    
+
     unique, counts = np.unique(y, return_counts=True)
     distribution = dict(zip(unique, counts))
     print(f"{name} distribution:")
