@@ -1,7 +1,7 @@
 from itertools import product
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.dummy import DummyClassifier
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, f1_score
 from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import script.data_visualization as dv
+from sklearn.model_selection import learning_curve
 
 
 
@@ -62,8 +63,8 @@ def undersample_model(X_train, y_train, sampling_strategy=0.5, random_state=42):
 
 # BASELINE MODEL 
 
-def baseline_model(X_train, y_train, X_val, y_val):
-    baseline = DummyClassifier(strategy="most_frequent")
+def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
+    baseline = DummyClassifier(strategy=method)
     baseline.fit(X_train, y_train)
 
     y_val_pred = baseline.predict(X_val)
@@ -100,9 +101,9 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
         model.fit(X_train, y_train)
         val_pred = model.predict(X_val)
-        val_acc = accuracy_score(y_val, val_pred)
+        val_acc = f1_score(y_val, val_pred)
 
-        print(f"Params: {params} | Validation Accuracy = {val_acc:.4f}" if verbose_level > 1 else "")
+        print(f"Params: {params} | Validation F1 Score = {val_acc:.4f}" if verbose_level > 1 else "")
 
         if val_acc > best_score:
             best_score = val_acc
@@ -110,7 +111,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
             best_model = model
 
     print("\n✅ Best parameters found:", best_params)
-    print(f"Best validation accuracy: {best_score:.4f}")
+    print(f"Best validation F1 Score: {best_score:.4f}")
 
     return best_model, best_params, best_score
 
@@ -185,7 +186,7 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 
-        print(f"Best {name} model with params: {best_params} achieved validation accuracy: {best_score:.4f}")
+        print(f"Best {name} model with params: {best_params} achieved validation F1 Score: {best_score:.4f}")
         if visualize: #TODO: fix visualization for all models (e.g. get_y_scores may fail)
             print(f"Visualizing {name} performance on validation set:")
             y_val_pred = best_model.predict(X_val)
@@ -199,16 +200,16 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
             dv.plot_precision_recall_curve(y_val, y_pred_proba)    
 
     summary = [
-        {"Model": name, "Best Validation Accuracy": score}
+        {"Model": name, "Best Validation F1 Score": score}
         for name, (_, _, score) in best_of_all_models.items()
     ]
 
-    print("\nSummary of Best Validation Accuracies:")
+    print("\nSummary of Best Validation F1 Scores:")
     for item in summary:
-        print(f"{item['Model']}: {item['Best Validation Accuracy']:.4f}")
+        print(f"{item['Model']}: {item['Best Validation F1 Score']:.4f}")
 
     best_model_name = max(best_of_all_models, key=lambda k: best_of_all_models[k][2])
-    print(f"\n🏆 Best overall model: {best_model_name} with validation accuracy: {best_of_all_models[best_model_name][2]:.4f}")
+    print(f"\n🏆 Best overall model: {best_model_name} with validation F1 Score: {best_of_all_models[best_model_name][2]:.4f}")
     return best_of_all_models[best_model_name][0]
 
 
@@ -231,7 +232,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3))
-    print("Accuracy:", accuracy_score(y_test, y_test_pred))
+    print("F1 Score:", f1_score(y_test, y_test_pred, average='weighted'))
     return y_test_pred
 
 
@@ -240,10 +241,8 @@ def evaluate_model_on_test(model, X_test, y_test):
 def get_learning_curve_data(model, X_train, y_train, cv=5, train_sizes=np.linspace(0.1, 1.0, 10)):
     '''Get data for learning curve plotting'''
 
-    from sklearn.model_selection import learning_curve
-
     train_sizes, train_scores, val_scores = learning_curve(
-        model, X_train, y_train, cv=cv, train_sizes=train_sizes, scoring='accuracy', n_jobs=-1
+        model, X_train, y_train, cv=cv, train_sizes=train_sizes, scoring='f1_weighted', n_jobs=-1
     )
 
     return train_sizes, train_scores, val_scores
