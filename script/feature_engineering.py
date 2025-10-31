@@ -1,6 +1,6 @@
 
 
-def rolling_features(df, window=3, functions=['mean', 'std', 'min', 'max']):
+def rolling_features(df, window=10, functions=['mean', 'std', 'min', 'max']):
     '''
     Generate rolling features for the given DataFrame.
     '''
@@ -12,10 +12,10 @@ def rolling_features(df, window=3, functions=['mean', 'std', 'min', 'max']):
 
     # Generate rolling features
     for col in df_rolling.columns:
-        rolling = df_rolling[col].rolling(window=window)
+        rolling = df_rolling[col].rolling(window=window, min_periods=1)
 
         for func in functions:
             col_name = f"{col}_rolling_{func}_{window}"
-            df_rolling[col_name] = getattr(rolling, func)()
+            df_rolling[col_name] = getattr(rolling, func)().fillna(method='bfill')
 
     return df_rolling

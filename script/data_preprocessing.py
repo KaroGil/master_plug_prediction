@@ -108,6 +108,9 @@ def remove_low_importance_features(X_train, X_val, X_test, feat_imp, threshold=0
     low_importance = feat_imp[feat_imp < threshold].index
     X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train, X_val, X_test, low_importance)
 
+    print(f"⚙️ Removed {len(low_importance)} low-importance features (importance < {threshold})")
+    print(f"    Remaining features: {X_train_reduced.shape[1]}")
+
     return X_train_reduced, X_val_reduced, X_test_reduced
 
 
@@ -118,6 +121,9 @@ def remove_highly_correlated_features(X_train_reduced, X_val_reduced, X_test_red
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
     to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
     X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train_reduced, X_val_reduced, X_test_reduced, to_drop)
+
+    print(f"⚙️ Removed {len(to_drop)} highly correlated features (correlation > {threshold})")
+    print(f"    Remaining features: {X_train_reduced.shape[1]}")
 
     return X_train_reduced, X_val_reduced, X_test_reduced
 

@@ -1,7 +1,7 @@
 from itertools import product
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.dummy import DummyClassifier
-from sklearn.metrics import classification_report, accuracy_score, f1_score
+from sklearn.metrics import classification_report, f1_score
 from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
@@ -75,10 +75,17 @@ def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
 
 
 def train_and_evaluate_rf(X_train, X_val, y_train, y_val):
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(
+        n_estimators=500,
+        max_depth=None,
+        min_samples_split=2,
+        class_weight='balanced',
+        random_state=42
+    )
     model.fit(X_train, y_train)
-    val_score = model.score(X_val, y_val)
-    print(f"Validation accuracy: {val_score:.3f}")
+    val_pred = model.predict(X_val)
+    val_score = f1_score(y_val, val_pred, average='weighted')
+    print(f"Validation F1 Score: {val_score:.3f}")
     return model
 
 # HYPERPARAMETER TUNING AND MODEL COMPARISON

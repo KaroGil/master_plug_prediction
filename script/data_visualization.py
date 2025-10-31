@@ -95,10 +95,12 @@ def plot_feature_importance(model, X_train):
 
     importances = model.feature_importances_
     feature_names = X_train.columns
-    feat_imp = pd.Series(importances, index=feature_names).sort_values(ascending=False)
+    feat_imp = pd.Series(importances, index=feature_names)
+    feat_imp = feat_imp / feat_imp.sum()
+    feat_imp_sorted = feat_imp.sort_values(ascending=False)
 
     plt.figure(figsize=(10, 5))
-    sns.barplot(x=feat_imp.values, y=feat_imp.index, palette="viridis", hue=feat_imp.values, legend=False)
+    sns.barplot(x=feat_imp_sorted.values, y=feat_imp_sorted.index, palette="viridis", hue=feat_imp_sorted.values, legend=False)
     plt.title('Feature Importance from RandomForest')
     plt.xlabel('Importance')
     plt.ylabel('Feature')
