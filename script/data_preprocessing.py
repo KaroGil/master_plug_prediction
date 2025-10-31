@@ -5,6 +5,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+import script.data_modeling as dm
+
 
 def load_data(path="../data/raw_data/data1/*.csv"):
     '''Load and concatenate CSV files from a given path'''
@@ -29,6 +31,13 @@ def load_split_data(dataset_name):
     y_test = pd.read_csv(f'../data/processed_data/{dataset_name}_y_test.csv')
 
     return X_train, X_val, X_test, y_train.squeeze(), y_val.squeeze(), y_test.squeeze()
+
+
+def sort_values_by_timestamp(df):
+    ''' Sort DataFrame by its timestamp index '''
+
+    df_sorted = df.sort_index()
+    return df_sorted
 
 
 def create_target_column(df):
@@ -102,6 +111,16 @@ def scale_features(X_train, X_val, X_test):
     return X_train, X_val, X_test
 
 
+def get_feature_importance(model, X_train):
+    '''Get feature importance from the trained model'''
+
+    importances = model.feature_importances_
+    feature_names = X_train.columns
+    feat_imp = pd.Series(importances, index=feature_names)
+    feat_imp = feat_imp / feat_imp.sum()
+
+    return feat_imp
+
 def remove_low_importance_features(X_train, X_val, X_test, feat_imp, threshold=0.04):
     ''' Remove low-importance features '''
 
@@ -146,3 +165,29 @@ def save_data(X_train, X_val, X_test, y_train, y_val, y_test, dataset_name):
     y_train.to_csv(f'../data/processed_data/{dataset_name}_y_train.csv', index=False)
     y_val.to_csv(f'../data/processed_data/{dataset_name}_y_val.csv', index=False)
     y_test.to_csv(f'../data/processed_data/{dataset_name}_y_test.csv', index=False)
+
+
+def preprocess_data(df, dataset_name, scale=True, remove_low_imp=True, remove_corr=True):
+    '''Full preprocessing pipeline'''
+
+    df = sort_values_by_timestamp(df)
+
+    create_target_column(df)
+    create_future_target(df)
+
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+
+    if scale:
+        X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+
+    if remove_low_imp:
+        model = dm.train_and_evaluate_rf(X_train, X_val, y_train, y_val)
+        feat_imp = get_feature_importance(model, X_train)
+        X_train, X_val, X_test = remove_low_importance_features(X_train, X_val, X_test, feat_imp)
+
+    if remove_corr:
+        X_train, X_val, X_test = remove_highly_correlated_features(X_train, X_val, X_test)
+
+    save_data(X_train, X_val, X_test, y_train, y_val, y_test, dataset_name)
+
+    return X_train, X_val, X_test, y_train, y_val, y_test

@@ -90,13 +90,9 @@ def visualize_plug_event(data):
     plt.show()
 
 
-def plot_feature_importance(model, X_train):
+def plot_feature_importance(feat_imp):
     '''Plot feature importance from a trained model'''
 
-    importances = model.feature_importances_
-    feature_names = X_train.columns
-    feat_imp = pd.Series(importances, index=feature_names)
-    feat_imp = feat_imp / feat_imp.sum()
     feat_imp_sorted = feat_imp.sort_values(ascending=False)
 
     plt.figure(figsize=(10, 5))
@@ -106,8 +102,6 @@ def plot_feature_importance(model, X_train):
     plt.ylabel('Feature')
     plt.tight_layout()
     plt.show()
-
-    return feat_imp
 
 
 def plot_correlation_matrix(X_train):
