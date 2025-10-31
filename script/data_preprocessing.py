@@ -88,12 +88,18 @@ def print_distribution(y, name):
 def scale_features(X_train, X_val, X_test):
     '''Standardize features using StandardScaler'''
 
+    X_train, X_val, X_test = X_train.copy(), X_val.copy(), X_test.copy()
+
+    numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
+
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
-    X_test_scaled = scaler.transform(X_test)
-    
-    return X_train_scaled, X_val_scaled, X_test_scaled
+    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+    X_val[numeric_cols] = scaler.transform(X_val[numeric_cols])
+    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
+
+    print("⚙️ Features scaled using StandardScaler")
+
+    return X_train, X_val, X_test
 
 
 def remove_low_importance_features(X_train, X_val, X_test, feat_imp, threshold=0.04):
