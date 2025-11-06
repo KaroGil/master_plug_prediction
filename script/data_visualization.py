@@ -2,7 +2,7 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, average_precision_score
+from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 from sklearn.calibration import calibration_curve
 
 
@@ -54,8 +54,11 @@ def visualize_flow_rate(data):
     plt.show()
 
 
-def plot_flow_pressure_drop_temp(data):
+def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None):
     '''Plot Flow rate, Pump outlet pressure, Drop pressure and Temperature over time'''
+
+    if start_time and end_time:
+        data = data.loc[start_time:end_time]
 
     plt.figure(figsize=(16,8))
     colors = plt.cm.tab20.colors  # Use a colormap for up to 20 columns, cycle if more

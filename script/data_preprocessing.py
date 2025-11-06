@@ -15,9 +15,13 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     df_list = [pd.read_csv(f, sep=";", decimal=",") for f in files]
 
     df = pd.concat(df_list)
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S,%f")  
-    df = df.set_index('Time')
-    
+    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S,%f")
+    df['Elapsed_seconds'] = (df['Time'] - df['Time'].iloc[0]).dt.total_seconds()
+
+    df.drop(columns=['Time'], inplace=True)
+
+    df = df.set_index('Elapsed_seconds')
+
     return df
 
 
@@ -47,10 +51,10 @@ def create_target_column(df):
     pressure = df["Pump outlet pressure (Mean)"]
 
     # Thresholds
-    flow_thresh = flow.median() * 0.7
+    flow_thresh = flow.median() * 0.9
     pressure_thresh = pressure.median() * 1.3
 
-    df["Plug"] = np.where((flow < flow_thresh) & (pressure > pressure_thresh), 1, 0)
+    df["Plug"] = np.where((flow < flow_thresh) | (pressure > pressure_thresh), 1, 0)
 
 
 def create_future_target(df, shift=-10):
