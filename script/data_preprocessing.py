@@ -44,7 +44,7 @@ def sort_values_by_timestamp(df):
     return df_sorted
 
 
-def create_target_column(df):
+def create_target_column(df): #TODO
     ''' Make the target column based on tresholds '''
 
     flow = df["Flow rate (Mean)"]
