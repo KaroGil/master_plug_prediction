@@ -44,17 +44,35 @@ def sort_values_by_timestamp(df):
     return df_sorted
 
 
-def create_target_column(df): #TODO
+def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow']):
     ''' Make the target column based on tresholds '''
 
-    flow = df["Flow rate (Mean)"]
-    pressure = df["Pump outlet pressure (Mean)"]
+    if "flow" in thresholds:
+        flow = df["Flow rate (Mean)"]
+        flow_thresh = flow.median() * 0.9
 
-    # Thresholds
-    flow_thresh = flow.median() * 0.9
-    pressure_thresh = pressure.median() * 1.3
+        print(f"⚙️ Flow threshold set to: {flow_thresh:.2f}")
 
-    df["Plug"] = np.where((flow < flow_thresh) | (pressure > pressure_thresh), 1, 0)
+        flow_plug = flow < flow_thresh 
+
+        # Initial plug labeling
+        df["Plug"] = np.where((flow_plug), 1, 0)
+
+        # Reset false positives
+        for i in range(1, len(df) - 300):
+            if df["Plug"].iloc[i] == 1 and flow.iloc[i+300] >= flow_thresh:
+                df["Plug"].iloc[i] = 0
+
+
+    if "pressure" in thresholds:
+        pressure = df["Pump outlet pressure (Mean)"]
+        pressure_thresh = pressure.median() * 1.3
+
+        print(f"⚙️ Pressure threshold set to: {pressure_thresh:.2f}")
+        
+        pressure_plug = pressure > pressure_thresh
+        
+        df["Plug"] = np.where((pressure_plug), 1, df["Plug"])
 
 
 def create_future_target(df, shift=-10):

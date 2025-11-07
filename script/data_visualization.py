@@ -72,7 +72,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None):
     plt.show()
 
 
-def visualize_plug_event(data):
+def visualize_plug_event(data, anomalies=True):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -85,6 +85,12 @@ def visualize_plug_event(data):
     plug_events = data[data["Plug"] == 1]
     plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label="Plug=1 (Flow)", zorder=5)
     plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label="Plug=1 (Pressure)", zorder=5)
+
+    # Highlight anomalies
+    if anomalies and "Anomaly" in data.columns:
+        anomaly_events = data[data["Anomaly"] == 1]
+        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
+        plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
 
     plt.xlabel("Time")
     plt.ylabel("Value")
