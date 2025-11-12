@@ -44,24 +44,29 @@ def sort_values_by_timestamp(df):
     return df_sorted
 
 
-def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow']):
+def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow'], mask=300):
     ''' Make the target column based on tresholds '''
 
     if "flow" in thresholds:
         flow = df["Flow rate (Mean)"]
-        flow_thresh = flow.median() * 0.9
+        flow_thresh = flow.median() * flow_thresh
 
         print(f"⚙️ Flow threshold set to: {flow_thresh:.2f}")
 
-        flow_plug = flow < flow_thresh 
-
         # Initial plug labeling
-        df["Plug"] = np.where((flow_plug), 1, 0)
+        df["Plug"] = np.where((flow < flow_thresh ), 1, 0)
+        df["Anomaly"] = 0
 
         # Reset false positives
-        for i in range(1, len(df) - 300):
-            if df["Plug"].iloc[i] == 1 and flow.iloc[i+300] >= flow_thresh:
+        for i in range(1, len(df) - mask):
+            if df["Plug"].iloc[i] == 1 and (flow.iloc[i+mask] > flow_thresh or flow.iloc[i-mask] > flow_thresh):
                 df["Plug"].iloc[i] = 0
+
+                df["Anomaly"].iloc[i-mask:i+mask] = 1
+
+
+
+
 
 
     if "pressure" in thresholds:

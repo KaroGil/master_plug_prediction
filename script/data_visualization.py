@@ -72,7 +72,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None):
     plt.show()
 
 
-def visualize_plug_event(data, anomalies=True):
+def visualize_plug_event(data, anomalies=False):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
