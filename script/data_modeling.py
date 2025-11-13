@@ -71,6 +71,9 @@ def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
     print("Validation set results (baseline):")
     print(classification_report(y_val, y_val_pred, digits=3))
 
+    val_score = f1_score(y_val, y_val_pred, average='weighted')
+    print(f"Validation F1 Score: {val_score:.3f}")
+
     return baseline
 
 

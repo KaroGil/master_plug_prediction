@@ -2,6 +2,7 @@
 import glob
 import pandas as pd
 import numpy as np
+import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -64,11 +65,6 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
 
                 df["Anomaly"].iloc[i-mask:i+mask] = 1
 
-
-
-
-
-
     if "pressure" in thresholds:
         pressure = df["Pump outlet pressure (Mean)"]
         pressure_thresh = pressure.median() * 1.3
@@ -127,6 +123,7 @@ def scale_features(X_train, X_val, X_test):
     X_train, X_val, X_test = X_train.copy(), X_val.copy(), X_test.copy()
 
     numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
 
     scaler = StandardScaler()
     X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
@@ -135,7 +132,28 @@ def scale_features(X_train, X_val, X_test):
 
     print("⚙️ Features scaled using StandardScaler")
 
+    #export scalar to be used later during inference
+    scaler_path = '../models/standard_scaler.pkl'
+    joblib.dump(scaler, scaler_path)
+
     return X_train, X_val, X_test
+
+
+def descale_features(df):
+    '''Inverse transform standardized features'''
+
+    scaler = joblib.load('../models/standard_scaler.pkl')
+
+    df = df.copy()
+
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+
+    df[numeric_cols] = scaler.inverse_transform(df[numeric_cols])
+
+    print("⚙️ Features descaled using StandardScaler inverse transform")
+
+    return df
 
 
 def get_feature_importance(model, X_train):

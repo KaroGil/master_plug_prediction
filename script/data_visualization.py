@@ -99,6 +99,38 @@ def visualize_plug_event(data, anomalies=False):
     plt.show()
 
 
+def visualize_predicted_vs_true(df, y_pred, anomalies=False):
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(12,6))
+
+    # Plot all data
+    plt.plot(df.index, df["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
+    plt.plot(df.index, df["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
+
+    # Highlight Plug=1 events
+    plug_events = df[df["Plug"] == 1]
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label="Plug=1 (Flow)", zorder=5)
+    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label="Plug=1 (Pressure)", zorder=5)
+
+    # Highlight anomalies
+    if anomalies and "Anomaly" in df.columns:
+        anomaly_events = df[df["Anomaly"] == 1]
+        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
+        plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
+
+    # Highlight predicted Plug events
+    plug_events = df[y_pred == 1]
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="yellow", label="Predicted plug (Flow)", zorder=5, marker='.')
+    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="green", label="Predicted plug (Pressure)", zorder=5, marker='.')
+
+
+    plt.xlabel("Time")
+    plt.ylabel("Value")
+    plt.title("Plug=1 Events Highlighted on Flow and Pressure")
+    plt.legend()
+    plt.show()
+
+
 def plot_feature_importance(feat_imp):
     '''Plot feature importance from a trained model'''
 
@@ -222,4 +254,22 @@ def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     plot_calibration_curve(y_test, y_scores, standalone=False, ax=ax[1, 1])
 
     plt.tight_layout()
+    plt.show()
+
+
+
+def plot_discrete_decision_boundry_isolation_forest(clf, X, y):
+    from sklearn.inspection import DecisionBoundaryDisplay
+
+    disp = DecisionBoundaryDisplay.from_estimator(
+        clf,
+        X,
+        response_method="predict",
+        alpha=0.5,
+    )
+    scatter = disp.ax_.scatter(X[:, 0], X[:, 1], c=y, s=20, edgecolor="k")
+    handles, _ = scatter.legend_elements()
+    disp.ax_.set_title("Binary decision boundary \nof IsolationForest")
+    plt.axis("square")
+    plt.legend(handles=handles, labels=["outliers", "inliers"], title="true class")
     plt.show()

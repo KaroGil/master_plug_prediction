@@ -56,3 +56,28 @@ def RobcovClassifier(X: Optional[np.ndarray] = None,
         clf.fit(X)
     return clf
 
+def train_anomaly_models(X: Optional[np.ndarray] = None):
+    ''' Train and return a dictionary of anomaly detection models. '''
+
+    models = {
+        "IsolationForest": IForestClassifier(X),
+        "OneClassSVM": OCSVMClassifier(X),
+        "EllipticEnvelope": RobcovClassifier(X)
+    }
+
+    return models
+
+
+
+def get_anomaly_scores(models, X):
+    results = {}
+
+    for name, model in models.items():
+        try:
+            score = model.decision_function(X)
+        except AttributeError:
+            score = model.score_samples(X)
+        results[name] = score
+
+    return results
+
