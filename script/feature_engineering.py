@@ -16,6 +16,6 @@ def rolling_features(df, window=10, functions=['mean', 'std', 'min', 'max']):
 
         for func in functions:
             col_name = f"{col}_rolling_{func}_{window}"
-            df_rolling[col_name] = getattr(rolling, func)().fillna(method='bfill')
+            df_rolling[col_name] = getattr(rolling, func)().bfill()
 
     return df_rolling

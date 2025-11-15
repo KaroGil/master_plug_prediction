@@ -100,7 +100,6 @@ def visualize_plug_event(data, anomalies=False):
 
 
 def visualize_predicted_vs_true(df, y_pred, anomalies=False):
-    import matplotlib.pyplot as plt
     plt.figure(figsize=(12,6))
 
     # Plot all data
@@ -156,7 +155,7 @@ def plot_correlation_matrix(X_train):
     plt.show()
 
 
-def plot_confusion_matrix(y_true, y_pred, standalone=True, ax=None):
+def plot_confusion_matrix(y_true, y_pred, standalone=True, ax=None, labels=None):
     '''Plot confusion matrix'''
     cm = confusion_matrix(y_true, y_pred)
 
@@ -183,7 +182,6 @@ def get_y_scores(model, X):
         raise ValueError(
             f"Model {type(model).__name__} does not provide probability or decision scores."
         )
-
 
 
 def plot_precision_recall_curve(y_true, y_scores, standalone=True, ax=None):
@@ -244,7 +242,7 @@ def plot_calibration_curve(y_true, y_scores, n_bins=10, standalone=True, ax=None
 
 def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     y_pred = model.predict(X_test)
-    y_scores = get_y_scores(model, X_test)  # works for all supported model types
+    y_scores = get_y_scores(model, X_test)
 
     _, ax = plt.subplots(2, 2, figsize=(18, 10))
 
@@ -257,19 +255,36 @@ def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     plt.show()
 
 
+def plot_anomaly_score_distribution(model, data):
+    '''Plot distribution of anomaly scores'''
 
-def plot_discrete_decision_boundry_isolation_forest(clf, X, y):
-    from sklearn.inspection import DecisionBoundaryDisplay
+    scores = -model.score_samples(data)
+    plt.hist(scores, bins=50)
+    plt.title(f"{type(model).__name__} anomaly score distribution")
+    plt.xlabel("Score")
+    plt.ylabel("Count")
+    plt.show()
 
-    disp = DecisionBoundaryDisplay.from_estimator(
-        clf,
-        X,
-        response_method="predict",
-        alpha=0.5,
-    )
-    scatter = disp.ax_.scatter(X[:, 0], X[:, 1], c=y, s=20, edgecolor="k")
-    handles, _ = scatter.legend_elements()
-    disp.ax_.set_title("Binary decision boundary \nof IsolationForest")
-    plt.axis("square")
-    plt.legend(handles=handles, labels=["outliers", "inliers"], title="true class")
+
+def feature_importnace_anomaly(model):
+    '''Plot feature importance for model'''
+
+    importances = np.array([tree.feature_importances_ for tree in model.estimators_])
+
+    importances = importances.mean(axis=0)
+
+    plt.bar(range(len(importances)), importances)
+    plt.title(f"{type(model).__name__} Feature Importance")
+    plt.xlabel("Feature index")
+    plt.ylabel("Importance")
+    plt.show()
+
+
+def plot_anomaly_distribution(preds, model_name):
+    unique, counts = np.unique(preds, return_counts=True)
+    plt.bar(unique, counts)
+    plt.xticks(unique, ['Normal', 'Anomaly'])
+    plt.title(f"Anomaly Distribution for {model_name}")
+    plt.xlabel("Class")
+    plt.ylabel("Count")
     plt.show()
