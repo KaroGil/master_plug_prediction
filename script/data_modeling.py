@@ -17,6 +17,7 @@ import shap
 from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
 import data_visualization as dv
+import anomaly_detection as ad
 from sklearn.model_selection import learning_curve
 
 
@@ -114,7 +115,13 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
     print("Feature importances:", importance[:10])
 
     threshold = np.percentile(importance, 30)         
-    selected = importance > threshold                 
+    selected = importance > threshold    
+
+    if selected.sum() == 0:
+        print("Warning: No features selected based on SHAP importance. Keeping top 10 features.")            
+        idx = np.argsort(importance)[-10:]
+        selected = np.zeros_like(importance, dtype=bool)
+        selected[idx] = True
 
     X_train_reduced = X_train.loc[:, selected]
 
@@ -164,54 +171,64 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
     return best_model, best_params, best_score
 
 
-def get_models_and_params():
-    models = {
-        "Random Forest": RandomForestClassifier(class_weight='balanced'),
-        "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-        "SVM": SVC(probability=True, class_weight='balanced'),
-        "XGBoost": XGBClassifier(eval_metric='logloss'),
-        "KNN": KNeighborsClassifier(),
-        "Naive Bayes": GaussianNB(),
-        "ANN": MLPClassifier(max_iter=500),
-        "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
-    }
+def get_models_and_params(data):
 
-    hyperparameters = {
-        "Random Forest": {
-            'n_estimators': [100, 200],
-            'max_depth': [10, 20]
-        },
-        "Logistic Regression": {
-            'C': [1.0, 0.5],
-            'solver': ['lbfgs', 'liblinear']
-        },
-        "SVM": {
-            'C': [1.0, 0.5],
-            'kernel': ['rbf', 'linear']
-        },
-        "XGBoost": {
-            'n_estimators': [100, 200],
-            'max_depth': [6, 8],
-            'learning_rate': [0.1, 0.01]
-        },
-        "KNN": {
-            'n_neighbors': [3, 5, 7],
-            'weights': ['uniform', 'distance']
-        },
-        "Naive Bayes": {
-            'var_smoothing': [1e-9, 1e-8, 1e-7]
-        },
-        "ANN": {
-            'hidden_layer_sizes': [(100,), (100, 50)],
-            'activation': ['relu', 'tanh'],
-            'solver': ['adam', 'sgd']
-        },
-        "CNN": {
-            'hidden_layer_sizes': [(100, 50), (150, 75)],
-            'activation': ['relu'],
-            'solver': ['adam']
+    if len(np.unique(data)) == 1:
+        print("⚠️  Only one class present. Using DummyClassifier.")
+        return (
+            {"Dummy": DummyClassifier(strategy="most_frequent"),
+             "OCSVM": ad.OneClassSVM()},
+            {"Dummy": {},
+             "OCSVM": {}}
+        )
+    else:
+        models = {
+            "Random Forest": RandomForestClassifier(class_weight='balanced'),
+            "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
+            "SVM": SVC(probability=True, class_weight='balanced'),
+            "XGBoost": XGBClassifier(eval_metric='logloss'),
+            "KNN": KNeighborsClassifier(),
+            "Naive Bayes": GaussianNB(),
+            # "ANN": MLPClassifier(max_iter=500),
+            # "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
         }
-    }
+
+        hyperparameters = {
+            "Random Forest": {
+                'n_estimators': [100, 200],
+                'max_depth': [10, 20]
+            },
+            "Logistic Regression": {
+                'C': [1.0, 0.5],
+                'solver': ['lbfgs', 'liblinear']
+            },
+            "SVM": {
+                'C': [1.0, 0.5],
+                'kernel': ['rbf', 'linear']
+            },
+            "XGBoost": {
+                'n_estimators': [100, 200],
+                'max_depth': [6, 8],
+                'learning_rate': [0.1, 0.01]
+            },
+            "KNN": {
+                'n_neighbors': [3, 5, 7],
+                'weights': ['uniform', 'distance']
+            },
+            "Naive Bayes": {
+                'var_smoothing': [1e-9, 1e-8, 1e-7]
+            },
+            # "ANN": {
+            #     'hidden_layer_sizes': [(100,), (100, 50)],
+            #     'activation': ['relu', 'tanh'],
+            #     'solver': ['adam', 'sgd']
+            # },
+            # "CNN": {
+            #     'hidden_layer_sizes': [(100, 50), (150, 75)],
+            #     'activation': ['relu'],
+            #     'solver': ['adam']
+            # }
+        }
 
     return models, hyperparameters
 
@@ -219,7 +236,7 @@ def get_models_and_params():
 def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=False):
     '''Compare multiple models with hyperparameter tuning and return the best one'''
 
-    models, hyperparameters = get_models_and_params()
+    models, hyperparameters = get_models_and_params(y_train)
 
     best_of_all_models = {}
 

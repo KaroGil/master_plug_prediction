@@ -120,6 +120,9 @@ def print_distribution(y, name):
 def scale_features(X_train, X_val, X_test):
     '''Standardize features using StandardScaler'''
 
+    if X_train.shape[1] == 0 or X_val.shape[1] == 0 or X_test.shape[1] == 0:
+        raise ValueError("❌ ERROR: No features left after SHAP/correlation. Check thresholds.")
+
     X_train, X_val, X_test = X_train.copy(), X_val.copy(), X_test.copy()
 
     numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
@@ -175,7 +178,13 @@ def remove_correlated_features(df, threshold=0.9):
 
     print(f"⚙️ Removing {len(to_drop)} correlated features with threshold > {threshold}: {to_drop}")
 
-    return ~df.columns.isin(to_drop)
+    selected = ~df.columns.isin(to_drop)
+
+    if selected.sum() == 0:
+        print("Warning: No features left after correlation removal. Adjust threshold.")            
+        selected = np.ones(len(df.columns), dtype=bool)
+    
+    return selected
 
 
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
