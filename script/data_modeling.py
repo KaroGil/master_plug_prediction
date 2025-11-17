@@ -13,10 +13,11 @@ from imblearn.under_sampling import RandomUnderSampler
 from xgboost import XGBClassifier
 import pandas as pd
 import numpy as np
+import shap
+from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
-import script.data_visualization as dv
+import data_visualization as dv
 from sklearn.model_selection import learning_curve
-
 
 
 # MODEL SAVING AND LOADING
@@ -78,19 +79,55 @@ def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
     return baseline
 
 
-def train_and_evaluate_rf(X_train, X_val, y_train, y_val):
-    model = RandomForestClassifier(
-        n_estimators=500,
-        max_depth=None,
-        min_samples_split=2,
-        class_weight='balanced',
+def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
+    ''' 
+    Calculate SHAP feature importance for the given model and training data, and
+    remove features with low importance. 
+    '''
+
+    baseline = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)
+    baseline.fit(X_train, y_train)
+    print("🛠️ Baseline model trained.")
+
+    sss = StratifiedShuffleSplit(
+        n_splits=1,
+        test_size=min(shap_subset_size, len(X_train)),
         random_state=42
     )
-    model.fit(X_train, y_train)
-    val_pred = model.predict(X_val)
-    val_score = f1_score(y_val, val_pred, average='weighted')
-    print(f"Validation F1 Score: {val_score:.3f}")
-    return model
+    _, shap_idx = next(sss.split(X_train, y_train))
+
+    X_shap = X_train.iloc[shap_idx]
+
+    background = shap.sample(X_train, 50) 
+    explainer = shap.Explainer(baseline.predict_proba, background)
+
+    shap_values = explainer(X_shap)
+
+    if hasattr(shap_values, "values") and shap_values.values.ndim == 3:
+        shap_pos = shap_values.values[:, :, 1]  
+    else:
+        shap_pos = shap_values.values
+
+    importance = np.mean(np.abs(shap_pos), axis=0)  
+
+    print("SHAP importance shape:", importance.shape)
+    print("Feature importances:", importance[:10])
+
+    threshold = np.percentile(importance, 30)         
+    selected = importance > threshold                 
+
+    X_train_reduced = X_train.loc[:, selected]
+
+    print("Original features:", X_train.shape[1])
+    print("Reduced features:", X_train_reduced.shape[1])
+
+    return X_train_reduced, selected
+
+
+def remove_shap_low_importance_features(X, selected):
+    '''Remove low importance features based on SHAP selection mask'''
+
+    return X.loc[:, selected]
 
 # HYPERPARAMETER TUNING AND MODEL COMPARISON
 
@@ -198,7 +235,7 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
         best_of_all_models[name] = (best_model, best_params, best_score)
 
         print(f"Best {name} model with params: {best_params} achieved validation F1 Score: {best_score:.4f}")
-        if visualize: #TODO: fix visualization for all models (e.g. get_y_scores may fail)
+        if visualize:
             print(f"Visualizing {name} performance on validation set:")
             y_val_pred = best_model.predict(X_val)
             dv.plot_confusion_matrix(y_val, y_val_pred)
@@ -257,3 +294,13 @@ def get_learning_curve_data(model, X_train, y_train, cv=5, train_sizes=np.linspa
     )
 
     return train_sizes, train_scores, val_scores
+
+
+def model_data(X_train, y_train, X_val, y_val, X_test, y_test):
+    '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
+
+    best_model = find_best_model(X_train, y_train, X_val, y_val, verbose_level=2)
+    final_model = retrain_final_model(X_train, X_val, y_train, y_val, best_model)
+    y_test_pred = evaluate_model_on_test(final_model, X_test, y_test)
+    
+    return final_model, y_test_pred

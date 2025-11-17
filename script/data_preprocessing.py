@@ -6,7 +6,8 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-import script.data_modeling as dm
+import data_modeling as dm
+import feature_engineering as fe
 
 
 def load_data(path="../data/raw_data/data1/*.csv"):
@@ -154,43 +155,6 @@ def descale_features(df):
 
     return df
 
-
-def get_feature_importance(model, X_train):
-    '''Get feature importance from the trained model'''
-
-    importances = model.feature_importances_
-    feature_names = X_train.columns
-    feat_imp = pd.Series(importances, index=feature_names)
-    feat_imp = feat_imp / feat_imp.sum()
-
-    return feat_imp
-
-def remove_low_importance_features(X_train, X_val, X_test, feat_imp, threshold=0.04):
-    ''' Remove low-importance features '''
-
-    low_importance = feat_imp[feat_imp < threshold].index
-    X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train, X_val, X_test, low_importance)
-
-    print(f"⚙️ Removed {len(low_importance)} low-importance features (importance < {threshold})")
-    print(f"    Remaining features: {X_train_reduced.shape[1]}")
-
-    return X_train_reduced, X_val_reduced, X_test_reduced
-
-
-def remove_highly_correlated_features(X_train_reduced, X_val_reduced, X_test_reduced, threshold=0.9):
-    ''' Remove one of each pair of highly correlated features '''
-
-    corr_matrix = X_train_reduced.corr().abs()
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
-    X_train_reduced, X_val_reduced, X_test_reduced = reduce_features(X_train_reduced, X_val_reduced, X_test_reduced, to_drop)
-
-    print(f"⚙️ Removed {len(to_drop)} highly correlated features (correlation > {threshold})")
-    print(f"    Remaining features: {X_train_reduced.shape[1]}")
-
-    return X_train_reduced, X_val_reduced, X_test_reduced
-
-
 def reduce_features(X_train, X_val, X_test, features_to_remove):
     '''Remove specified features (columns) from datasets'''
 
@@ -201,6 +165,19 @@ def reduce_features(X_train, X_val, X_test, features_to_remove):
     return X_train_reduced, X_val_reduced, X_test_reduced
 
 
+def remove_correlated_features(df, threshold=0.9):
+    '''Remove highly correlated features from DataFrame'''
+
+    corr = df.corr().abs()
+    upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+
+    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
+
+    print(f"⚙️ Removing {len(to_drop)} correlated features with threshold > {threshold}: {to_drop}")
+
+    return ~df.columns.isin(to_drop)
+
+
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
     for key, df in data.items():
@@ -208,7 +185,7 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
     print(f"💾 Saved data with base name: {dataset_name}")
     
 
-def preprocess_data(df, dataset_name, scale=True, remove_low_imp=True, remove_corr=True):
+def preprocess_data(df, dataset_name):
     '''Full preprocessing pipeline'''
 
     df = sort_values_by_timestamp(df)
@@ -218,16 +195,20 @@ def preprocess_data(df, dataset_name, scale=True, remove_low_imp=True, remove_co
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
 
-    if scale:
-        X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+    X_train = fe.rolling_features(X_train)
+    X_val = fe.rolling_features(X_val)
+    X_test = fe.rolling_features(X_test)
 
-    if remove_low_imp:
-        model = dm.train_and_evaluate_rf(X_train, X_val, y_train, y_val)
-        feat_imp = get_feature_importance(model, X_train)
-        X_train, X_val, X_test = remove_low_importance_features(X_train, X_val, X_test, feat_imp)
+    X_train, selected = dm.shap_feature_importance(X_train, y_train)
+    X_val = dm.remove_shap_low_importance_features(X_val, selected)
+    X_test = dm.remove_shap_low_importance_features(X_test, selected)
 
-    if remove_corr:
-        X_train, X_val, X_test = remove_highly_correlated_features(X_train, X_val, X_test)
+    corr_mask = remove_correlated_features(X_train, threshold=0.9)
+    X_train = X_train.loc[:, corr_mask]
+    X_val = X_val.loc[:, corr_mask]
+    X_test = X_test.loc[:, corr_mask]
+
+    X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
 
     data_to_save = {
         'X_train': X_train,
