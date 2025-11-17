@@ -26,17 +26,16 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     return df
 
 
-def load_split_data(dataset_name):
-    '''Load pre-saved processed data from CSV files'''
-    X_train = pd.read_csv(f'../data/processed_data/{dataset_name}_X_train.csv')
-    X_val = pd.read_csv(f'../data/processed_data/{dataset_name}_X_val.csv')
-    X_test = pd.read_csv(f'../data/processed_data/{dataset_name}_X_test.csv')
-    y_train = pd.read_csv(f'../data/processed_data/{dataset_name}_y_train.csv')
-    y_val = pd.read_csv(f'../data/processed_data/{dataset_name}_y_val.csv')
-    y_test = pd.read_csv(f'../data/processed_data/{dataset_name}_y_test.csv')
+def load_split_data(data: list, dataset_name: str, base_path="../data/processed_data/"):
+    '''Load datasets to CSV files'''
+    loaded_data = {}
 
-    return X_train, X_val, X_test, y_train.squeeze(), y_val.squeeze(), y_test.squeeze()
+    for key in data:
+        loaded_data[key] = pd.read_csv(f"{base_path}{dataset_name}_{key}.csv", index_col=0)
+    print(f"Load data with base name: {dataset_name}")
 
+    return loaded_data
+    
 
 def sort_values_by_timestamp(df):
     ''' Sort DataFrame by its timestamp index '''
@@ -202,15 +201,12 @@ def reduce_features(X_train, X_val, X_test, features_to_remove):
     return X_train_reduced, X_val_reduced, X_test_reduced
 
 
-def save_data(X_train, X_val, X_test, y_train, y_val, y_test, dataset_name):
+def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
-    X_train.to_csv(f'../data/processed_data/{dataset_name}_X_train.csv', index=False)
-    X_val.to_csv(f'../data/processed_data/{dataset_name}_X_val.csv', index=False)
-    X_test.to_csv(f'../data/processed_data/{dataset_name}_X_test.csv', index=False)
-    y_train.to_csv(f'../data/processed_data/{dataset_name}_y_train.csv', index=False)
-    y_val.to_csv(f'../data/processed_data/{dataset_name}_y_val.csv', index=False)
-    y_test.to_csv(f'../data/processed_data/{dataset_name}_y_test.csv', index=False)
-
+    for key, df in data.items():
+        df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=True)
+    print(f"💾 Saved data with base name: {dataset_name}")
+    
 
 def preprocess_data(df, dataset_name, scale=True, remove_low_imp=True, remove_corr=True):
     '''Full preprocessing pipeline'''
@@ -233,6 +229,15 @@ def preprocess_data(df, dataset_name, scale=True, remove_low_imp=True, remove_co
     if remove_corr:
         X_train, X_val, X_test = remove_highly_correlated_features(X_train, X_val, X_test)
 
-    save_data(X_train, X_val, X_test, y_train, y_val, y_test, dataset_name)
+    data_to_save = {
+        'X_train': X_train,
+        'X_val': X_val,
+        'X_test': X_test,
+        'y_train': y_train,
+        'y_val': y_val,
+        'y_test': y_test
+    }
+
+    save_data(data_to_save, dataset_name)
 
     return X_train, X_val, X_test, y_train, y_val, y_test

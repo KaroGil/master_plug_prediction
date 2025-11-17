@@ -1,6 +1,5 @@
 import numpy as np
 import seaborn as sns
-import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 from sklearn.calibration import calibration_curve
