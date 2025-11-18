@@ -6,7 +6,6 @@ from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 import joblib
 from imblearn.under_sampling import RandomUnderSampler
@@ -16,9 +15,10 @@ import numpy as np
 import shap
 from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
-import data_visualization as dv
-import anomaly_detection as ad
 from sklearn.model_selection import learning_curve
+
+from . import data_visualization as dv
+from . import anomaly_detection as ad
 
 
 # MODEL SAVING AND LOADING
@@ -90,13 +90,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
     baseline.fit(X_train, y_train)
     print("🛠️ Baseline model trained.")
 
-    sss = StratifiedShuffleSplit(
-        n_splits=1,
-        test_size=min(shap_subset_size, len(X_train)),
-        random_state=42
-    )
-    _, shap_idx = next(sss.split(X_train, y_train))
-
+    shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
     X_shap = X_train.iloc[shap_idx]
 
     background = shap.sample(X_train, 50) 
@@ -185,7 +179,7 @@ def get_models_and_params(data):
         models = {
             "Random Forest": RandomForestClassifier(class_weight='balanced'),
             "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-            "SVM": SVC(probability=True, class_weight='balanced'),
+            #"SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss'),
             "KNN": KNeighborsClassifier(),
             "Naive Bayes": GaussianNB(),

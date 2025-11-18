@@ -30,6 +30,8 @@ def OCSVMClassifier(X: Optional[np.ndarray],
     """
 
     clf = OneClassSVM(nu=nu, kernel=kernel, gamma=gamma, **kwargs)
+
+    print("Training One-Class SVM...")
     
     clf.fit(X)
 
@@ -64,7 +66,7 @@ def train_anomaly_models(X: Optional[np.ndarray]):
 
     models = {
         "IsolationForest": IForestClassifier(X),
-        "OneClassSVM": OCSVMClassifier(X),
+        #"OneClassSVM": OCSVMClassifier(X),
         "EllipticEnvelope": RobcovClassifier(X)
     }
 

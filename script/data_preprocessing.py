@@ -6,8 +6,9 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-import data_modeling as dm
-import feature_engineering as fe
+from . import data_modeling as dm
+from . import feature_engineering as fe
+from . import oversampling as ov
 
 
 def load_data(path="../data/raw_data/data1/*.csv"):
@@ -136,7 +137,7 @@ def scale_features(X_train, X_val, X_test):
     print("⚙️ Features scaled using StandardScaler")
 
     #export scalar to be used later during inference
-    scaler_path = '../models/standard_scaler.pkl'
+    scaler_path = 'models/standard_scaler.pkl'
     joblib.dump(scaler, scaler_path)
 
     return X_train, X_val, X_test
@@ -144,8 +145,8 @@ def scale_features(X_train, X_val, X_test):
 
 def descale_features(df):
     '''Inverse transform standardized features'''
-
-    scaler = joblib.load('../models/standard_scaler.pkl')
+    
+    scaler = joblib.load('models/standard_scaler.pkl')
 
     df = df.copy()
 
@@ -208,16 +209,23 @@ def preprocess_data(df, dataset_name):
     X_val = fe.rolling_features(X_val)
     X_test = fe.rolling_features(X_test)
 
-    X_train, selected = dm.shap_feature_importance(X_train, y_train)
+    X_train, selected = dm.shap_feature_importance(X_train, y_train, shap_subset_size=50)
     X_val = dm.remove_shap_low_importance_features(X_val, selected)
     X_test = dm.remove_shap_low_importance_features(X_test, selected)
 
-    corr_mask = remove_correlated_features(X_train, threshold=0.9)
-    X_train = X_train.loc[:, corr_mask]
-    X_val = X_val.loc[:, corr_mask]
-    X_test = X_test.loc[:, corr_mask]
+    # corr_mask = remove_correlated_features(X_train, threshold=0.9)
+    # X_train = X_train.loc[:, corr_mask]
+    # X_val = X_val.loc[:, corr_mask]
+    # X_test = X_test.loc[:, corr_mask]
 
     X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+
+    X_train, y_train = ov.oversample_minority(
+        X_train,
+        y_train,
+        target_ratio=1.0,       
+        random_state=42
+    )
 
     data_to_save = {
         'X_train': X_train,
@@ -228,6 +236,6 @@ def preprocess_data(df, dataset_name):
         'y_test': y_test
     }
 
-    save_data(data_to_save, dataset_name)
+    save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
