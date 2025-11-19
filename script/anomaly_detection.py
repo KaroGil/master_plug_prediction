@@ -61,13 +61,15 @@ def RobcovClassifier(X: Optional[np.ndarray],
     
     return clf
 
-def train_anomaly_models(X: Optional[np.ndarray]):
+def train_anomaly_models(X: Optional[np.ndarray], y: Optional[np.ndarray]):
     ''' Train and return a dictionary of anomaly detection models. '''
 
+    normal_X = X[y==0]
+
     models = {
-        "IsolationForest": IForestClassifier(X),
-        #"OneClassSVM": OCSVMClassifier(X),
-        "EllipticEnvelope": RobcovClassifier(X)
+        "IsolationForest": IForestClassifier(normal_X),
+        #"OneClassSVM": OCSVMClassifier(normal_X),
+        "EllipticEnvelope": RobcovClassifier(normal_X)
     }
 
     print(f"Trained {len(models)} anomaly detection models.")

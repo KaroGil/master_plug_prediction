@@ -106,6 +106,10 @@ def oversample_minority(X: pd.DataFrame,
     y = y.squeeze()
     y = pd.Series(y, index=X.index)
 
+    if y.nunique() != 2:
+        print("y must be binary for oversampling.")
+        return X, y
+
     # masks
     minor_mask = (y == 1)
     majority_mask = ~minor_mask

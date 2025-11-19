@@ -6,7 +6,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+from sklearn.svm import SVC, OneClassSVM
 import joblib
 from imblearn.under_sampling import RandomUnderSampler
 from xgboost import XGBClassifier
@@ -150,7 +150,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
         model.fit(X_train, y_train)
         val_pred = model.predict(X_val)
-        val_acc = f1_score(y_val, val_pred)
+        val_acc = f1_score(y_val, val_pred, average='weighted')
 
         print(f"Params: {params} | Validation F1 Score = {val_acc:.4f}" if verbose_level > 1 else "")
 
@@ -168,10 +168,10 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 def get_models_and_params(data):
 
     if len(np.unique(data)) == 1:
-        print("⚠️  Only one class present. Using DummyClassifier.")
+        print("⚠️  Only one class present.")
         return (
             {"Dummy": DummyClassifier(strategy="most_frequent"),
-             "OCSVM": ad.OneClassSVM()},
+             "OCSVM": OneClassSVM(nu=0.5, kernel='rbf', gamma='scale')},
             {"Dummy": {},
              "OCSVM": {}}
         )
