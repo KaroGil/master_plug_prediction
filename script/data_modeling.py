@@ -1,11 +1,13 @@
 from itertools import product
+from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import classification_report, f1_score
 from imblearn.over_sampling import SMOTE
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, SGDOneClassSVM
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC, OneClassSVM
 import joblib
 from imblearn.under_sampling import RandomUnderSampler
@@ -13,7 +15,6 @@ from xgboost import XGBClassifier
 import pandas as pd
 import numpy as np
 import shap
-from sklearn.model_selection import StratifiedShuffleSplit
 from pathlib import Path
 from sklearn.model_selection import learning_curve
 
@@ -150,6 +151,8 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
         model.fit(X_train, y_train)
         val_pred = model.predict(X_val)
+        if isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope):
+            val_pred = np.where(val_pred == -1, 1, 0)  # Convert to anomaly labels
         val_acc = f1_score(y_val, val_pred, average='weighted')
 
         print(f"Params: {params} | Validation F1 Score = {val_acc:.4f}" if verbose_level > 1 else "")
@@ -171,8 +174,8 @@ def get_models_and_params(data):
         print("⚠️  Only one class present.")
         return (
             {"Dummy": DummyClassifier(strategy="most_frequent"),
-             "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
-             "OCSVM": OneClassSVM(nu=0.5, kernel='linear', gamma='scale')},
+             "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1)
+             },
             {"Dummy": {
                 "strategy": ["most_frequent", "stratified"]
             },
@@ -180,19 +183,20 @@ def get_models_and_params(data):
                     'n_estimators': [100, 200],
                     'max_samples': ['auto', 0.8],
                     'contamination': [0.1, 0.2]
-             },
-             "OCSVM": {}}
+             }}
         )
     else:
         models = {
             "Random Forest": RandomForestClassifier(class_weight='balanced'),
             "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-            #"SVM": SVC(probability=True, class_weight='balanced'),
+            "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
+            "RobCov": EllipticEnvelope(contamination=0.1),
+            "SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss'),
             "KNN": KNeighborsClassifier(),
             "Naive Bayes": GaussianNB(),
-            # "ANN": MLPClassifier(max_iter=500),
-            # "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
+            "ANN": MLPClassifier(max_iter=500),
+            "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
         }
 
         hyperparameters = {
@@ -203,6 +207,14 @@ def get_models_and_params(data):
             "Logistic Regression": {
                 'C': [1.0, 0.5],
                 'solver': ['lbfgs', 'liblinear']
+            },
+            "Isolation Forest": {
+                'n_estimators': [100, 200],
+                'max_samples': ['auto', 0.8],
+                'contamination': [0.1, 0.2]
+            },
+            "RobCov": {
+                'contamination': [0.1, 0.2]
             },
             "SVM": {
                 'C': [1.0, 0.5],
@@ -220,16 +232,16 @@ def get_models_and_params(data):
             "Naive Bayes": {
                 'var_smoothing': [1e-9, 1e-8, 1e-7]
             },
-            # "ANN": {
-            #     'hidden_layer_sizes': [(100,), (100, 50)],
-            #     'activation': ['relu', 'tanh'],
-            #     'solver': ['adam', 'sgd']
-            # },
-            # "CNN": {
-            #     'hidden_layer_sizes': [(100, 50), (150, 75)],
-            #     'activation': ['relu'],
-            #     'solver': ['adam']
-            # }
+            "ANN": {
+                'hidden_layer_sizes': [(100,), (100, 50)],
+                'activation': ['relu', 'tanh'],
+                'solver': ['adam', 'sgd']
+            },
+            "CNN": {
+                'hidden_layer_sizes': [(100, 50), (150, 75)],
+                'activation': ['relu'],
+                'solver': ['adam']
+            }
         }
 
     return models, hyperparameters
@@ -296,6 +308,8 @@ def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
 
     y_test_pred = model.predict(X_test)
+    if isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope):
+        y_test_pred = np.where(y_test_pred == -1, 1, 0)  # Convert to anomaly labels
     print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3))

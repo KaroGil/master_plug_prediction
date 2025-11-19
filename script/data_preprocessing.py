@@ -10,7 +10,13 @@ from . import data_modeling as dm
 from . import feature_engineering as fe
 from . import oversampling as ov
 
+# Define scaler path
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+scaler_path = os.path.join(BASE_DIR, '..', 'models', 'standard_scaler.pkl')
+scaler_path = os.path.abspath(scaler_path)
 
+#### Functions for data preprocessing ###
 def load_data(path="../data/raw_data/data1/*.csv"):
     '''Load and concatenate CSV files from a given path'''
 
@@ -137,7 +143,6 @@ def scale_features(X_train, X_val, X_test):
     print("⚙️ Features scaled using StandardScaler")
 
     #export scalar to be used later during inference
-    scaler_path = 'models/standard_scaler.pkl'
     joblib.dump(scaler, scaler_path)
 
     return X_train, X_val, X_test
@@ -146,7 +151,7 @@ def scale_features(X_train, X_val, X_test):
 def descale_features(df):
     '''Inverse transform standardized features'''
     
-    scaler = joblib.load('models/standard_scaler.pkl')
+    scaler = joblib.load(scaler_path)
 
     df = df.copy()
 
