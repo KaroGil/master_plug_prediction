@@ -133,6 +133,11 @@ def remove_shap_low_importance_features(X, selected):
 
 # HYPERPARAMETER TUNING AND MODEL COMPARISON
 
+def check_anomaly_model(model):
+    '''Check if the model is an anomaly detection model'''
+
+    return isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope)
+
 def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val, verbose_level=1):
     '''Perform time-series aware hyperparameter search'''
 
@@ -145,13 +150,18 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
     print(f"Searching over {len(combinations)} hyperparameter combinations..." if verbose_level > 0 else "")
 
+    if check_anomaly_model(model):
+        X_train = X_train[y_train == 0]
+        y_train = y_train[y_train == 0]
+
     for combo in combinations:
         params = dict(zip(keys, combo))
         model.set_params(**params)
 
+
         model.fit(X_train, y_train)
         val_pred = model.predict(X_val)
-        if isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope):
+        if check_anomaly_model(model):
             val_pred = np.where(val_pred == -1, 1, 0)  # Convert to anomaly labels
         val_acc = f1_score(y_val, val_pred, average='weighted')
 
@@ -190,7 +200,6 @@ def get_models_and_params(data):
             "Random Forest": RandomForestClassifier(class_weight='balanced'),
             "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
             "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
-            "RobCov": EllipticEnvelope(contamination=0.1),
             "SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss'),
             "KNN": KNeighborsClassifier(),
@@ -213,12 +222,9 @@ def get_models_and_params(data):
                 'max_samples': ['auto', 0.8],
                 'contamination': [0.1, 0.2]
             },
-            "RobCov": {
-                'contamination': [0.1, 0.2]
-            },
             "SVM": {
                 'C': [1.0, 0.5],
-                'kernel': ['rbf', 'linear']
+                'kernel': ['linear'] #commented out ['rbf'] for faster convergence
             },
             "XGBoost": {
                 'n_estimators': [100, 200],
@@ -308,7 +314,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
 
     y_test_pred = model.predict(X_test)
-    if isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope):
+    if check_anomaly_model(model):
         y_test_pred = np.where(y_test_pred == -1, 1, 0)  # Convert to anomaly labels
     print(y_test_pred)
     print("Test set results:")
