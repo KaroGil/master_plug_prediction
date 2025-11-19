@@ -1,5 +1,5 @@
 from itertools import product
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import classification_report, f1_score
 from imblearn.over_sampling import SMOTE
@@ -171,8 +171,16 @@ def get_models_and_params(data):
         print("⚠️  Only one class present.")
         return (
             {"Dummy": DummyClassifier(strategy="most_frequent"),
-             "OCSVM": OneClassSVM(nu=0.5, kernel='rbf', gamma='scale')},
-            {"Dummy": {},
+             "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
+             "OCSVM": OneClassSVM(nu=0.5, kernel='linear', gamma='scale')},
+            {"Dummy": {
+                "strategy": ["most_frequent", "stratified"]
+            },
+             "Isolation Forest": {
+                    'n_estimators': [100, 200],
+                    'max_samples': ['auto', 0.8],
+                    'contamination': [0.1, 0.2]
+             },
              "OCSVM": {}}
         )
     else:

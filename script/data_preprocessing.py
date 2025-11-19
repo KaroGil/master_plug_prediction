@@ -62,9 +62,9 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
         # Reset false positives
         for i in range(1, len(df) - mask):
             if df["Plug"].iloc[i] == 1 and (flow.iloc[i+mask] > flow_thresh or flow.iloc[i-mask] > flow_thresh):
-                df.loc[i, "Plug"] = 0
+                df.loc[df.index[i], "Plug"] = 0
 
-                df.loc[i-mask:i+mask, "Anomaly"] = 1
+                df.loc[df.index[max(0, i-mask): min(len(df), i+mask)], "Anomaly"] = 1
 
     if "pressure" in thresholds:
         pressure = df["Pump outlet pressure (Mean)"]
