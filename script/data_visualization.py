@@ -5,7 +5,6 @@ from sklearn.metrics import confusion_matrix, precision_recall_curve, average_pr
 from sklearn.calibration import calibration_curve
 
 
-
 def plot_feature_histograms(data):
     '''Histograms for each numeric feature'''
 

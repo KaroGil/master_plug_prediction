@@ -1,13 +1,9 @@
 from itertools import product
-from sklearn.covariance import EllipticEnvelope
+import os
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import classification_report, f1_score
 from imblearn.over_sampling import SMOTE
-from sklearn.linear_model import LogisticRegression, SGDOneClassSVM
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC, OneClassSVM
 import joblib
 from imblearn.under_sampling import RandomUnderSampler
@@ -19,7 +15,8 @@ from pathlib import Path
 from sklearn.model_selection import learning_curve
 
 from . import data_visualization as dv
-from . import anomaly_detection as ad
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # MODEL SAVING AND LOADING
@@ -124,7 +121,9 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
     print("Reduced features:", X_train_reduced.shape[1])
 
     # save selected mask for later use
-    joblib.dump(selected, "models/shap_selected_mask.pkl")
+    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
+    shap_path = os.path.abspath(shap_path)
+    joblib.dump(selected, shap_path)
 
     return X_train_reduced, selected
 
@@ -139,7 +138,7 @@ def remove_shap_low_importance_features(X, selected):
 def check_anomaly_model(model):
     '''Check if the model is an anomaly detection model'''
 
-    return isinstance(model, OneClassSVM) or isinstance(model, IsolationForest) or isinstance(model, SGDOneClassSVM) or isinstance(model, EllipticEnvelope)
+    return isinstance(model, OneClassSVM) or isinstance(model, IsolationForest)
 
 def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val, verbose_level=1):
     '''Perform time-series aware hyperparameter search'''
@@ -181,6 +180,36 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
     return best_model, best_params, best_score
 
 
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from scipy.stats import randint
+
+def tune_random_search(model, X_train, y_train, params, n_iter=40):
+    '''Perform Randomized Search with Time Series Cross-Validation'''
+    if check_anomaly_model(model):
+        X_train = X_train[y_train == 0]
+        y_train = y_train[y_train == 0]
+
+    tscv = TimeSeriesSplit(n_splits=5)
+
+    search = RandomizedSearchCV(
+        estimator=model,
+        param_distributions=params,
+        n_iter=n_iter,
+        scoring='f1_weighted',
+        cv=tscv,            
+        n_jobs=-1,
+        verbose=2,
+        random_state=42
+    )
+
+    search.fit(X_train, y_train)
+
+    print("\nBest parameters:", search.best_params_)
+    print("Best F1 score:", search.best_score_)
+
+    return search.best_estimator_, search.best_params_, search.best_score_
+
+
 def get_models_and_params(data):
 
     if len(np.unique(data)) == 1:
@@ -201,56 +230,36 @@ def get_models_and_params(data):
     else:
         models = {
             "Random Forest": RandomForestClassifier(class_weight='balanced'),
-        #     "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-        #     "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
-        #     "SVM": SVC(probability=True, class_weight='balanced'),
-        #     "XGBoost": XGBClassifier(eval_metric='logloss'),
-        #     "KNN": KNeighborsClassifier(),
-        #     "Naive Bayes": GaussianNB(),
-        #     "ANN": MLPClassifier(max_iter=500),
-        #     "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
+            "SVM": SVC(probability=True, class_weight='balanced'),
+            "XGBoost": XGBClassifier(eval_metric='logloss'),
         }
 
         hyperparameters = {
             "Random Forest": {
-                'n_estimators': [100, 200],
-                'max_depth': [10, 20]
+                # 'n_estimators': [100, 200],
+                # 'max_depth': [10, 20]
+                'n_estimators': [200, 400, 800],
+                'max_depth': [10, 20, 40, None],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4],
+                'max_features': ['sqrt', 'log2', 0.3, 0.5]
             },
-            "Logistic Regression": {
-                'C': [1.0, 0.5],
-                'solver': ['lbfgs', 'liblinear']
-            },
-            "Isolation Forest": {
-                'n_estimators': [100, 200],
-                'max_samples': ['auto', 0.8],
-                'contamination': [0.1, 0.2]
-            },
+            
             "SVM": {
                 'C': [1.0, 0.5],
                 'kernel': ['linear'] #commented out ['rbf'] for faster convergence
             },
             "XGBoost": {
-                'n_estimators': [100, 200],
-                'max_depth': [6, 8],
-                'learning_rate': [0.1, 0.01]
+                # 'n_estimators': [100, 200],
+                # 'max_depth': [6, 8],
+                # 'learning_rate': [0.1, 0.01]
+                'n_estimators': [200, 500],
+                'max_depth': [4, 6, 8],
+                'learning_rate': [0.01, 0.05, 0.1],
+                'subsample': [0.6, 0.8, 1.0],
+                'colsample_bytree': [0.6, 0.8, 1.0],
+                'gamma': [0, 1, 5]
             },
-            "KNN": {
-                'n_neighbors': [3, 5, 7],
-                'weights': ['uniform', 'distance']
-            },
-            "Naive Bayes": {
-                'var_smoothing': [1e-9, 1e-8, 1e-7]
-            },
-            "ANN": {
-                'hidden_layer_sizes': [(100,), (100, 50)],
-                'activation': ['relu', 'tanh'],
-                'solver': ['adam', 'sgd']
-            },
-            "CNN": {
-                'hidden_layer_sizes': [(100, 50), (150, 75)],
-                'activation': ['relu'],
-                'solver': ['adam']
-            }
         }
 
     return models, hyperparameters
@@ -265,12 +274,18 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
 
     for name, model in models.items():
         print(f"\n🔍 Tuning {name}...")
-        best_model, best_params, best_score = time_series_hyperparameter_search(
+        # best_model, best_params, best_score = time_series_hyperparameter_search(
+        #     model,
+        #     hyperparameters[name],
+        #     X_train, y_train,
+        #     X_val, y_val,
+        #     verbose_level
+        # )
+        best_model, best_params, best_score = tune_random_search(
             model,
-            hyperparameters[name],
             X_train, y_train,
-            X_val, y_val,
-            verbose_level
+            hyperparameters[name],
+            n_iter=20
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 
