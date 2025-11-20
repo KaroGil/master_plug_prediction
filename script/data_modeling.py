@@ -24,7 +24,7 @@ from . import anomaly_detection as ad
 
 # MODEL SAVING AND LOADING
 
-def save_model(model, path_name):
+def save_model(model, path_name="models/best_model.joblib"):
     '''Save model / pipeline to disk'''
     path = Path(path_name)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +123,9 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
     print("Original features:", X_train.shape[1])
     print("Reduced features:", X_train_reduced.shape[1])
 
+    # save selected mask for later use
+    joblib.dump(selected, "models/shap_selected_mask.pkl")
+
     return X_train_reduced, selected
 
 
@@ -198,14 +201,14 @@ def get_models_and_params(data):
     else:
         models = {
             "Random Forest": RandomForestClassifier(class_weight='balanced'),
-            "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-            "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
-            "SVM": SVC(probability=True, class_weight='balanced'),
-            "XGBoost": XGBClassifier(eval_metric='logloss'),
-            "KNN": KNeighborsClassifier(),
-            "Naive Bayes": GaussianNB(),
-            "ANN": MLPClassifier(max_iter=500),
-            "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
+        #     "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced'),
+        #     "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1),
+        #     "SVM": SVC(probability=True, class_weight='balanced'),
+        #     "XGBoost": XGBClassifier(eval_metric='logloss'),
+        #     "KNN": KNeighborsClassifier(),
+        #     "Naive Bayes": GaussianNB(),
+        #     "ANN": MLPClassifier(max_iter=500),
+        #     "CNN": MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=500)
         }
 
         hyperparameters = {
@@ -339,7 +342,7 @@ def model_data(X_train, y_train, X_val, y_val, X_test, y_test):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
     best_model = find_best_model(X_train, y_train, X_val, y_val, verbose_level=2)
+    save_model(best_model)
     final_model = retrain_final_model(X_train, X_val, y_train, y_val, best_model)
     y_test_pred = evaluate_model_on_test(final_model, X_test, y_test)
-    
     return final_model, y_test_pred

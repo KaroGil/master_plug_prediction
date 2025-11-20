@@ -201,7 +201,7 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
     
 
 def preprocess_data(df, dataset_name):
-    '''Full preprocessing pipeline'''
+    '''Full preprocessing pipeline for model selection and training'''
 
     df = sort_values_by_timestamp(df)
 
@@ -217,11 +217,6 @@ def preprocess_data(df, dataset_name):
     X_train, selected = dm.shap_feature_importance(X_train, y_train, shap_subset_size=50)
     X_val = dm.remove_shap_low_importance_features(X_val, selected)
     X_test = dm.remove_shap_low_importance_features(X_test, selected)
-
-    # corr_mask = remove_correlated_features(X_train, threshold=0.9)
-    # X_train = X_train.loc[:, corr_mask]
-    # X_val = X_val.loc[:, corr_mask]
-    # X_test = X_test.loc[:, corr_mask]
 
     X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
 
@@ -244,3 +239,32 @@ def preprocess_data(df, dataset_name):
     save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def preprocess_data_predict(df):
+    '''Full preprocessing pipeline for prediction'''
+
+    df = sort_values_by_timestamp(df)
+
+    create_target_column(df)
+    create_future_target(df)
+
+    X = df.drop(columns=['Plug', 'Plug_future'])
+    y = df['Plug_future'].squeeze()
+
+    df = X
+    df = fe.rolling_features(df)
+
+    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
+    shap_path = os.path.abspath(shap_path)
+    
+    shap_selected = joblib.load(shap_path)
+
+    df = dm.remove_shap_low_importance_features(df, shap_selected)
+
+    scalar = joblib.load(scaler_path)
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    df[numeric_cols] = scalar.transform(df[numeric_cols])
+
+    return df

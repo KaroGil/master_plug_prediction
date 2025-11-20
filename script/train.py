@@ -1,7 +1,13 @@
+import sys
 from script.data_modeling import model_data
 from script.data_preprocessing import load_data, preprocess_data
 
-data = load_data("data/raw_data/data1/*.csv")
+BASE_PATH = "data/raw_data/"
+
+csv_file = "data1" if len(sys.argv) < 2 else sys.argv[1]
+print(f"Loading data from: {BASE_PATH + csv_file + '/*.csv'}")
+
+data = load_data(BASE_PATH + csv_file + '/*.csv')
 
 X_train, X_val, X_test, y_train, y_val, y_test = preprocess_data(data, "dataset_1")
 
