@@ -1,14 +1,17 @@
 # File extension imports
 import glob
-import pandas as pd
-import numpy as np
+import shap
 import joblib
-from sklearn.model_selection import train_test_split
+import numpy as np
+import pandas as pd
+from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from imblearn.under_sampling import RandomUnderSampler
 
-from . import data_modeling as dm
 from . import feature_engineering as fe
 from . import oversampling as ov
+
 
 # Define scaler path
 import os
@@ -55,6 +58,9 @@ def sort_values_by_timestamp(df):
 def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow'], mask=300):
     ''' Make the target column based on tresholds '''
 
+    if ("Flow rate (Mean)" not in df.columns and "flow" in thresholds) or ("Pump outlet pressure (Mean)" not in df.columns and "pressure" in thresholds):
+        raise ValueError("❌ ERROR: Required columns for target creation are missing.")
+
     if "flow" in thresholds:
         flow = df["Flow rate (Mean)"]
         flow_thresh = flow.median() * flow_thresh
@@ -91,11 +97,20 @@ def create_future_target(df, shift=-10):
     df.dropna(subset=['Plug_future'], inplace=True)
 
 
-def train_val_test_split(X,y):
+def train_val_test_split(X,y,test_size=0.0047):
     '''Split data into train, validation, and test sets without shuffling'''
+    n = len(X)
+    test_start_idx = int((1 - test_size) * n)
+    val_start_idx = int((1 - 2 * test_size) * n)
 
-    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.0095, random_state=42, shuffle=False)
-    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42, shuffle=False)
+    X_train = X.iloc[:val_start_idx]
+    y_train = y.iloc[:val_start_idx]
+
+    X_val = X.iloc[val_start_idx:test_start_idx]
+    y_val = y.iloc[val_start_idx:test_start_idx]
+
+    X_test = X.iloc[test_start_idx:]
+    y_test = y.iloc[test_start_idx:]
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -193,6 +208,92 @@ def remove_correlated_features(df, threshold=0.9):
     return selected
 
 
+def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
+    ''' 
+    Calculate SHAP feature importance for the given model and training data, and
+    remove features with low importance. 
+    '''
+
+    baseline = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)
+    baseline.fit(X_train, y_train)
+    print("🛠️ Baseline model trained.")
+
+    shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
+    X_shap = X_train.iloc[shap_idx]
+
+    background = shap.sample(X_train, 50) 
+    explainer = shap.Explainer(baseline.predict_proba, background)
+
+    shap_values = explainer(X_shap)
+
+    if hasattr(shap_values, "values") and shap_values.values.ndim == 3:
+        shap_pos = shap_values.values[:, :, 1]  
+    else:
+        shap_pos = shap_values.values
+
+    importance = np.mean(np.abs(shap_pos), axis=0)  
+
+    print("SHAP importance shape:", importance.shape)
+    print("Feature importances:", importance[:10])
+
+    threshold = np.percentile(importance, 30)         
+    selected = importance > threshold    
+
+    if selected.sum() == 0:
+        print("Warning: No features selected based on SHAP importance. Keeping top 10 features.")            
+        idx = np.argsort(importance)[-10:]
+        selected = np.zeros_like(importance, dtype=bool)
+        selected[idx] = True
+
+    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'Plug', 'Plug_future', 'Elapsed_seconds']
+    always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
+    selected[always_keep_idx] = True
+
+    X_train_reduced = X_train.loc[:, selected]
+
+    print("Original features:", X_train.shape[1])
+    print("Reduced features:", X_train_reduced.shape[1])
+
+    # save selected mask for later use
+    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
+    shap_path = os.path.abspath(shap_path)
+    joblib.dump(selected, shap_path)
+
+    return X_train_reduced, selected
+
+
+def remove_shap_low_importance_features(X, selected):
+    '''Remove low importance features based on SHAP selection mask'''
+
+    return X.loc[:, selected]
+
+
+# RESAMPLING TECHNIQUES
+def SMOTE_model(X_train, y_train):
+    '''Apply SMOTE to balance classes in training data'''
+
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    print('After SMOTE:', y_train_resampled.value_counts())
+    print('After SMOTE (%):', y_train_resampled.value_counts(normalize=True))
+
+    return X_train_resampled, y_train_resampled
+
+
+def undersample_model(X_train, y_train, sampling_strategy=0.5, random_state=42):
+    """
+    Apply Random Under-Sampling to balance classes in training data
+    """
+    rus = RandomUnderSampler(sampling_strategy=sampling_strategy, random_state=random_state)
+    X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
+
+    print('After undersampling:', y_resampled.value_counts())
+    print('After undersampling (%):', y_resampled.value_counts(normalize=True))
+
+    return X_resampled, y_resampled
+
+
+
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
     for key, df in data.items():
@@ -209,14 +310,17 @@ def preprocess_data(df, dataset_name):
     create_future_target(df)
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+    print_distribution(y_train, "Training set")
+    print_distribution(y_val, "Validation set")
+    print_distribution(y_test, "Test set")
 
     X_train = fe.rolling_features(X_train)
     X_val = fe.rolling_features(X_val)
     X_test = fe.rolling_features(X_test)
 
-    X_train, selected = dm.shap_feature_importance(X_train, y_train, shap_subset_size=50)
-    X_val = dm.remove_shap_low_importance_features(X_val, selected)
-    X_test = dm.remove_shap_low_importance_features(X_test, selected)
+    X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
+    X_val = remove_shap_low_importance_features(X_val, selected)
+    X_test = remove_shap_low_importance_features(X_test, selected)
 
     X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
 
@@ -252,19 +356,19 @@ def preprocess_data_predict(df):
     X = df.drop(columns=['Plug', 'Plug_future'])
     y = df['Plug_future'].squeeze()
 
-    df = X
-    df = fe.rolling_features(df)
+    X = fe.rolling_features(X)
 
     shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
     shap_path = os.path.abspath(shap_path)
     
     shap_selected = joblib.load(shap_path)
 
-    df = dm.remove_shap_low_importance_features(df, shap_selected)
+    X = remove_shap_low_importance_features(X, shap_selected)
 
     scalar = joblib.load(scaler_path)
-    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
-    df[numeric_cols] = scalar.transform(df[numeric_cols])
+    unscaled_X = X.copy()
+    X[numeric_cols] = scalar.transform(X[numeric_cols])
 
-    return df
+    return X, y, unscaled_X

@@ -1,6 +1,6 @@
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
-from sklearn.covariance import EllipticEnvelope
+from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 from typing import Optional
 import numpy as np
 
@@ -40,26 +40,6 @@ def OCSVMClassifier(X: Optional[np.ndarray],
     return clf
 
 
-def RobcovClassifier(X: Optional[np.ndarray],
-                     contamination: float = 0.01,
-                     support_fraction: Optional[float] = None,
-                     random_state: Optional[int] = None,
-                     **kwargs):
-    """
-    Create (and optionally fit) an EllipticEnvelope (robust covariance) detector.
-    Good for Gaussian-like anomaly detection.
-    """ 
-
-    clf = EllipticEnvelope(contamination=contamination,
-                           support_fraction=support_fraction,
-                           random_state=random_state,
-                           **kwargs)
-    
-    clf.fit(X)
-
-    print(f"Elliptic Envelope trained with contamination={contamination}, support_fraction={support_fraction}")
-    
-    return clf
 
 def train_anomaly_models(X: Optional[np.ndarray], y: Optional[np.ndarray]):
     ''' Train and return a dictionary of anomaly detection models. '''
@@ -69,8 +49,7 @@ def train_anomaly_models(X: Optional[np.ndarray], y: Optional[np.ndarray]):
     models = {
         "IsolationForest": IForestClassifier(normal_X),
         #"OneClassSVM": OCSVMClassifier(normal_X),
-        "EllipticEnvelope": RobcovClassifier(normal_X)
-    }
+        }
 
     print(f"Trained {len(models)} anomaly detection models.")
 
@@ -111,8 +90,6 @@ def get_anomaly_scores(models, X):
 
 
 def hyperparameter_search(model, param_grid, X_train):
-    from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
-
     ts_cv = TimeSeriesSplit(
         n_splits=5, 
     )
@@ -122,7 +99,7 @@ def hyperparameter_search(model, param_grid, X_train):
         param_distributions=param_grid,
         n_iter=20,
         cv=ts_cv,
-        scoring='f1',
+        scoring='f1_weighted',
         n_jobs=-1
     )
 

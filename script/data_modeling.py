@@ -1,18 +1,16 @@
-from itertools import product
 import os
-from sklearn.ensemble import IsolationForest, RandomForestClassifier
-from sklearn.dummy import DummyClassifier
-from sklearn.metrics import classification_report, f1_score
-from imblearn.over_sampling import SMOTE
-from sklearn.svm import SVC, OneClassSVM
 import joblib
-from imblearn.under_sampling import RandomUnderSampler
-from xgboost import XGBClassifier
-import pandas as pd
 import numpy as np
-import shap
+import pandas as pd
 from pathlib import Path
+from itertools import product
+from xgboost import XGBClassifier
+from sklearn.svm import SVC, OneClassSVM
+from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import learning_curve
+from sklearn.metrics import classification_report, f1_score
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 
 from . import data_visualization as dv
 
@@ -20,11 +18,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # MODEL SAVING AND LOADING
-
-def save_model(model, path_name="models/best_model.joblib"):
+def save_model(model, model_name, base_path="models/"):
     '''Save model / pipeline to disk'''
-    path = Path(path_name)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = Path(base_path)
+    path.mkdir(parents=True, exist_ok=True)
+    path = path / f"{model_name}.joblib"
     joblib.dump(model, path)
     print(f"Saved model to {path}")
 
@@ -35,34 +33,7 @@ def load_model(path):
     return joblib.load(path)
 
 
-# RESAMPLING TECHNIQUES
-
-def SMOTE_model(X_train, y_train):
-    '''Apply SMOTE to balance classes in training data'''
-
-    smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    print('After SMOTE:', y_train_resampled.value_counts())
-    print('After SMOTE (%):', y_train_resampled.value_counts(normalize=True))
-
-    return X_train_resampled, y_train_resampled
-
-
-def undersample_model(X_train, y_train, sampling_strategy=0.5, random_state=42):
-    """
-    Apply Random Under-Sampling to balance classes in training data
-    """
-    rus = RandomUnderSampler(sampling_strategy=sampling_strategy, random_state=random_state)
-    X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
-
-    print('After undersampling:', y_resampled.value_counts())
-    print('After undersampling (%):', y_resampled.value_counts(normalize=True))
-
-    return X_resampled, y_resampled
-
-
-# BASELINE MODEL 
-
+# BASELINE MODEL
 def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
     baseline = DummyClassifier(strategy=method)
     baseline.fit(X_train, y_train)
@@ -78,67 +49,13 @@ def baseline_model(X_train, y_train, X_val, y_val, method="most_frequent"):
     return baseline
 
 
-def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
-    ''' 
-    Calculate SHAP feature importance for the given model and training data, and
-    remove features with low importance. 
-    '''
-
-    baseline = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)
-    baseline.fit(X_train, y_train)
-    print("🛠️ Baseline model trained.")
-
-    shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
-    X_shap = X_train.iloc[shap_idx]
-
-    background = shap.sample(X_train, 50) 
-    explainer = shap.Explainer(baseline.predict_proba, background)
-
-    shap_values = explainer(X_shap)
-
-    if hasattr(shap_values, "values") and shap_values.values.ndim == 3:
-        shap_pos = shap_values.values[:, :, 1]  
-    else:
-        shap_pos = shap_values.values
-
-    importance = np.mean(np.abs(shap_pos), axis=0)  
-
-    print("SHAP importance shape:", importance.shape)
-    print("Feature importances:", importance[:10])
-
-    threshold = np.percentile(importance, 30)         
-    selected = importance > threshold    
-
-    if selected.sum() == 0:
-        print("Warning: No features selected based on SHAP importance. Keeping top 10 features.")            
-        idx = np.argsort(importance)[-10:]
-        selected = np.zeros_like(importance, dtype=bool)
-        selected[idx] = True
-
-    X_train_reduced = X_train.loc[:, selected]
-
-    print("Original features:", X_train.shape[1])
-    print("Reduced features:", X_train_reduced.shape[1])
-
-    # save selected mask for later use
-    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
-    shap_path = os.path.abspath(shap_path)
-    joblib.dump(selected, shap_path)
-
-    return X_train_reduced, selected
-
-
-def remove_shap_low_importance_features(X, selected):
-    '''Remove low importance features based on SHAP selection mask'''
-
-    return X.loc[:, selected]
-
 # HYPERPARAMETER TUNING AND MODEL COMPARISON
 
 def check_anomaly_model(model):
     '''Check if the model is an anomaly detection model'''
 
     return isinstance(model, OneClassSVM) or isinstance(model, IsolationForest)
+
 
 def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val, y_val, verbose_level=1):
     '''Perform time-series aware hyperparameter search'''
@@ -162,26 +79,27 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
 
 
         model.fit(X_train, y_train)
+        train_pred = model.predict(X_train)
         val_pred = model.predict(X_val)
         if check_anomaly_model(model):
             val_pred = np.where(val_pred == -1, 1, 0)  # Convert to anomaly labels
         val_acc = f1_score(y_val, val_pred, average='weighted')
+        train_acc = f1_score(y_train, train_pred, average='weighted')
 
-        print(f"Params: {params} | Validation F1 Score = {val_acc:.4f}" if verbose_level > 1 else "")
+        print(f"Params: {params} | Validation F1 Score = {val_acc:.4f} | Training F1 Score = {train_acc:.4f}" if verbose_level > 1 else "")
 
         if val_acc > best_score:
             best_score = val_acc
+            best_train_score = train_acc
             best_params = params
             best_model = model
 
     print("\n✅ Best parameters found:", best_params)
-    print(f"Best validation F1 Score: {best_score:.4f}")
+    print(f"Best validation F1 Score: {best_score:.4f} | Training F1 Score = {best_train_score:.4f}" if verbose_level > 0 else "")
+
 
     return best_model, best_params, best_score
 
-
-from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
-from scipy.stats import randint
 
 def tune_random_search(model, X_train, y_train, params, n_iter=40):
     '''Perform Randomized Search with Time Series Cross-Validation'''
@@ -199,13 +117,15 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         cv=tscv,            
         n_jobs=-1,
         verbose=2,
-        random_state=42
+        random_state=42,
+        error_score='raise'
     )
 
     search.fit(X_train, y_train)
 
     print("\nBest parameters:", search.best_params_)
     print("Best F1 score:", search.best_score_)
+    print("Best Training F1 score:", f1_score(y_train, search.predict(X_train), average='weighted'))
 
     return search.best_estimator_, search.best_params_, search.best_score_
 
@@ -236,8 +156,6 @@ def get_models_and_params(data):
 
         hyperparameters = {
             "Random Forest": {
-                # 'n_estimators': [100, 200],
-                # 'max_depth': [10, 20]
                 'n_estimators': [200, 400, 800],
                 'max_depth': [10, 20, 40, None],
                 'min_samples_split': [2, 5, 10],
@@ -250,15 +168,13 @@ def get_models_and_params(data):
                 'kernel': ['linear'] #commented out ['rbf'] for faster convergence
             },
             "XGBoost": {
-                # 'n_estimators': [100, 200],
-                # 'max_depth': [6, 8],
-                # 'learning_rate': [0.1, 0.01]
                 'n_estimators': [200, 500],
                 'max_depth': [4, 6, 8],
                 'learning_rate': [0.01, 0.05, 0.1],
                 'subsample': [0.6, 0.8, 1.0],
                 'colsample_bytree': [0.6, 0.8, 1.0],
-                'gamma': [0, 1, 5]
+                'gamma': [0, 1, 5],
+                'base_score': [0.5]
             },
         }
 
@@ -274,16 +190,18 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
 
     for name, model in models.items():
         print(f"\n🔍 Tuning {name}...")
-        # best_model, best_params, best_score = time_series_hyperparameter_search(
-        #     model,
-        #     hyperparameters[name],
-        #     X_train, y_train,
-        #     X_val, y_val,
-        #     verbose_level
-        # )
-        best_model, best_params, best_score = tune_random_search(
+        if name == "SVM":
+            best_model, best_params, best_score = time_series_hyperparameter_search(
             model,
+            hyperparameters[name],
             X_train, y_train,
+            X_val, y_val,
+            verbose_level
+        )
+        else:
+            best_model, best_params, best_score = tune_random_search(
+            model,
+            pd.concat([X_train, X_val], axis=0), pd.concat([y_train, y_val], axis=0),
             hyperparameters[name],
             n_iter=20
         )
@@ -317,7 +235,6 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
 
 
 # TEST SET EVALUATION
-
 def retrain_final_model(X_train, X_val, y_train, y_val, best_model):
     '''Retrain the best model on the train + val'''
 
@@ -342,7 +259,6 @@ def evaluate_model_on_test(model, X_test, y_test):
 
 
 # LEARNING CURVE DATA
-
 def get_learning_curve_data(model, X_train, y_train, cv=5, train_sizes=np.linspace(0.1, 1.0, 10)):
     '''Get data for learning curve plotting'''
 
@@ -357,7 +273,7 @@ def model_data(X_train, y_train, X_val, y_val, X_test, y_test):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
     best_model = find_best_model(X_train, y_train, X_val, y_val, verbose_level=2)
-    save_model(best_model)
+    save_model(best_model, model_name=type(best_model).__name__)
     final_model = retrain_final_model(X_train, X_val, y_train, y_val, best_model)
     y_test_pred = evaluate_model_on_test(final_model, X_test, y_test)
     return final_model, y_test_pred

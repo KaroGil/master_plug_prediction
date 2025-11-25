@@ -97,33 +97,35 @@ def visualize_plug_event(data, anomalies=False):
     plt.show()
 
 
-def visualize_predicted_vs_true(df, y_pred, anomalies=False):
+def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None):
     plt.figure(figsize=(12,6))
 
+    flow_col = "Flow rate (Mean)"
+    pressure_col = "Pump outlet pressure (Mean)"
+
     # Plot all data
-    plt.plot(df.index, df["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
-    plt.plot(df.index, df["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
-
-    # Highlight Plug=1 events
-    plug_events = df[df["Plug"] == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label="Plug=1 (Flow)", zorder=5)
-    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label="Plug=1 (Pressure)", zorder=5)
-
+    plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
+    plt.plot(df.index, df[pressure_col], label="Pump outlet pressure", alpha=0.5)
+    # Highlight Plug=1 events #TODO: change to plug_future? instead of plug? since thats what we are predicting?
+    plug_events = df[df["Plug_future"] == 1]
+    plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5)
+    plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5)
     # Highlight anomalies
     if anomalies and "Anomaly" in df.columns:
         anomaly_events = df[df["Anomaly"] == 1]
-        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
-        plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
+        plt.scatter(anomaly_events.index, anomaly_events[flow_col], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
+        plt.scatter(anomaly_events.index, anomaly_events[pressure_col], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
 
     # Highlight predicted Plug events
     plug_events = df[y_pred == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="yellow", label="Predicted plug (Flow)", zorder=5, marker='.')
-    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="green", label="Predicted plug (Pressure)", zorder=5, marker='.')
+    plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
+    plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')
 
 
     plt.xlabel("Time")
     plt.ylabel("Value")
-    plt.title("Plug=1 Events Highlighted on Flow and Pressure")
+    model_name_str = f" by {model_name}" if model_name else ""
+    plt.title(f"Predicted vs True Plug=1 Events{model_name_str}")
     plt.legend()
     plt.show()
 
