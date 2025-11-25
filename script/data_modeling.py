@@ -18,7 +18,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # MODEL SAVING AND LOADING
-def save_model(model, model_name, base_path="models/"):
+def save_model(model, model_name="best_model", base_path="models/"):
     '''Save model / pipeline to disk'''
     path = Path(base_path)
     path.mkdir(parents=True, exist_ok=True)
@@ -273,7 +273,7 @@ def model_data(X_train, y_train, X_val, y_val, X_test, y_test):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
     best_model = find_best_model(X_train, y_train, X_val, y_val, verbose_level=2)
-    save_model(best_model, model_name=type(best_model).__name__)
+    save_model(best_model)
     final_model = retrain_final_model(X_train, X_val, y_train, y_val, best_model)
     y_test_pred = evaluate_model_on_test(final_model, X_test, y_test)
     return final_model, y_test_pred
