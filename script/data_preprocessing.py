@@ -101,14 +101,13 @@ def train_val_test_split(X,y,test_size=0.0047):
     test_start_idx = int((1 - test_size) * n)
     val_start_idx = int((1 - 2 * test_size) * n)
 
-    X_train = X.iloc[:val_start_idx]
-    y_train = y.iloc[:val_start_idx]
+    X_train = X[:val_start_idx]
+    y_train = y[:val_start_idx]
 
-    X_val = X.iloc[val_start_idx:test_start_idx]
-    y_val = y.iloc[val_start_idx:test_start_idx]
-
-    X_test = X.iloc[test_start_idx:]
-    y_test = y.iloc[test_start_idx:]
+    X_val = X[val_start_idx:test_start_idx]
+    y_val = y[val_start_idx:test_start_idx] 
+    X_test = X[test_start_idx:]
+    y_test = y[test_start_idx:]
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -137,28 +136,36 @@ def print_distribution(y, name):
         print(f"  Class {key}: {value} samples")
 
 
-def scale_features(X_train, X_val, X_test):
-    '''Standardize features using StandardScaler'''
+def scale_features(X_train, X_val, X_test, scaler_path="scaler.pkl"):
+    """
+    Scale features using StandardScaler.
+    Works for NumPy arrays (not DataFrames).
+    """
 
-    if X_train.shape[1] == 0 or X_val.shape[1] == 0 or X_test.shape[1] == 0:
-        raise ValueError("❌ ERROR: No features left after SHAP/correlation. Check thresholds.")
+    # Sanity check
+    if X_train.shape[1] == 0:
+        raise ValueError("❌ ERROR: No features left to scale.")
 
-    X_train, X_val, X_test = X_train.copy(), X_val.copy(), X_test.copy()
+    # Convert to float (SVM/RF/XGB require numeric)
+    X_train = X_train.astype(float)
+    X_val   = X_val.astype(float)
+    X_test  = X_test.astype(float)
 
-    numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
-
+    # Fit scaler on training data only
     scaler = StandardScaler()
-    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-    X_val[numeric_cols] = scaler.transform(X_val[numeric_cols])
-    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
+    X_train_scaled = scaler.fit_transform(X_train)
+
+    # Transform val/test
+    X_val_scaled = scaler.transform(X_val)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Save for inference
+    joblib.dump(scaler, scaler_path)
 
     print("⚙️ Features scaled using StandardScaler")
 
-    #export scalar to be used later during inference
-    joblib.dump(scaler, scaler_path)
+    return X_train_scaled, X_val_scaled, X_test_scaled
 
-    return X_train, X_val, X_test
 
 
 def descale_features(df):
@@ -187,64 +194,58 @@ def reduce_features(X_train, X_val, X_test, features_to_remove):
     return X_train_reduced, X_val_reduced, X_test_reduced
 
 
-def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
-    ''' 
-    Calculate SHAP feature importance for the given model and training data, and
-    remove features with low importance. 
-    '''
+def shap_feature_importance(X_train, y_train, feature_names, shap_subset_size=1000):
 
-    baseline = RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)
+    # 1. Train baseline RF model for SHAP importance
+    baseline = RandomForestClassifier(
+        n_estimators=300,
+        random_state=42,
+        n_jobs=-1
+    )
     baseline.fit(X_train, y_train)
-    print("🛠️ Baseline model trained.")
+    print("🛠️ Baseline SHAP model trained.")
 
+    # 2. Subset for SHAP computation
     shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
-    X_shap = X_train.iloc[shap_idx]
+    X_shap = X_train[shap_idx]
 
-    background = shap.sample(X_train, 50) 
-    explainer = shap.Explainer(baseline.predict_proba, background)
+    # 3. Use TreeExplainer (fast + correct for RF/XGB)
+    explainer = shap.TreeExplainer(baseline)
+    shap_values = explainer.shap_values(X_shap)
 
-    shap_values = explainer(X_shap)
-
-    if hasattr(shap_values, "values") and shap_values.values.ndim == 3:
-        shap_pos = shap_values.values[:, :, 1]  
+    # 4. Handle binary classification format
+    if isinstance(shap_values, list):
+        shap_pos = shap_values[1]   # positive class
     else:
-        shap_pos = shap_values.values
+        shap_pos = shap_values
 
-    importance = np.mean(np.abs(shap_pos), axis=0)  
+    # 5. Compute global feature importance
+    importance = np.mean(np.abs(shap_pos), axis=0)
 
-    print("SHAP importance shape:", importance.shape)
-    print("Feature importances:", importance[:10])
+    # 6. Threshold-based selection
+    threshold = np.percentile(importance, 30)
+    selected_mask = importance > threshold
 
-    threshold = np.percentile(importance, 30)         
-    selected = importance > threshold    
+    # 7. Always-keep features (if needed)
+    always_keep = []
+    for feat in always_keep:
+        if feat in feature_names:
+            idx = feature_names.index(feat)
+            selected_mask[idx] = True
 
-    if selected.sum() == 0:
-        print("Warning: No features selected based on SHAP importance. Keeping top 10 features.")            
-        idx = np.argsort(importance)[-10:]
-        selected = np.zeros_like(importance, dtype=bool)
-        selected[idx] = True
+    # 8. Reduce X_train
+    X_train_reduced = X_train[:, selected_mask]
 
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'Plug', 'Plug_future', 'Elapsed_seconds']
-    always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
-    selected[always_keep_idx] = True
+    # 9. Store selection
+    joblib.dump(selected_mask, "shap_selected_mask.pkl")
 
-    X_train_reduced = X_train.loc[:, selected]
-
-    print("Original features:", X_train.shape[1])
-    print("Reduced features:", X_train_reduced.shape[1])
-
-    # save selected mask for later use
-    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
-    shap_path = os.path.abspath(shap_path)
-    joblib.dump(selected, shap_path)
-
-    return X_train_reduced, selected
+    return X_train_reduced, selected_mask
 
 
 def remove_shap_low_importance_features(X, selected):
     '''Remove low importance features based on SHAP selection mask'''
 
-    return X.loc[:, selected]
+    return X[:, selected]
 
 
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
@@ -255,47 +256,44 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
     
 
 def preprocess_data(df, dataset_name):
-    '''Full preprocessing pipeline for model selection and training'''
 
     df = sort_values_by_timestamp(df)
 
-    create_target_column(df)
+    create_target_column(df) 
     create_future_target(df)
 
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
-    print_distribution(y_train, "Training set")
-    print_distribution(y_val, "Validation set")
+    X, y = ov.window_data(
+        df,
+        window_seconds=10,
+        sampling_rate=0.05
+    )
+
+    X_train, X_val, X_test, y_train, y_val, y_test = train_val_test_split(X, y)
+    print_distribution(y_train, "Training set") 
+    print_distribution(y_val, "Validation set") 
     print_distribution(y_test, "Test set")
 
-    X_train = fe.rolling_features(X_train)
-    X_val = fe.rolling_features(X_val)
-    X_test = fe.rolling_features(X_test)
+    X_train_bal, y_train_bal = ov.oversample_within_windows(X_train, y_train)
 
-    X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
-    X_val = remove_shap_low_importance_features(X_val, selected)
-    X_test = remove_shap_low_importance_features(X_test, selected)
+    print("After oversampling:")
+    print_distribution(y_train_bal, "Training set") 
 
-    X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
-
-    X_train, y_train = ov.oversample_minority(
-        X_train,
-        y_train,
-        target_ratio=1.0,       
-        random_state=42
+    X_train_scaled, X_val_scaled, X_test_scaled = scale_features(
+        X_train_bal, X_val, X_test
     )
 
     data_to_save = {
-        'X_train': X_train,
-        'X_val': X_val,
-        'X_test': X_test,
-        'y_train': y_train,
+        'X_train': X_train_scaled,
+        'X_val': X_val_scaled,
+        'X_test': X_test_scaled,
+        'y_train': y_train_bal,
         'y_val': y_val,
         'y_test': y_test
     }
-
     save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    return X_train_scaled, X_val_scaled, X_test_scaled, y_train_bal, y_val, y_test
+
 
 
 def preprocess_data_predict(df):

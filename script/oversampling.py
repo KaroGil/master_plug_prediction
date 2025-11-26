@@ -1,4 +1,37 @@
 import pandas as pd
+import numpy as np
+from imblearn.over_sampling import RandomOverSampler
+
+def window_data(df, window_seconds = 10, sampling_rate = 0.05):
+    window_size = int(window_seconds / sampling_rate)
+
+    feature_cols = [
+        col for col in df.columns if col not in ['Anomaly', 'Plug', 'Plug_future', "Elapsed_seconds"]
+    ]
+
+    X_windows = []
+    y_windows = []
+
+    for i in range(len(df) - window_size):
+        window = df.iloc[i:i + window_size][feature_cols].values
+        label = df.iloc[i + window_size]['Plug_future']
+
+        X_windows.append(window)
+        y_windows.append(label)
+    
+    X_windows = np.array(X_windows)
+    y_windows = np.array(y_windows)
+
+    return X_windows, y_windows
+
+def oversample_within_windows(X_windows, y_windows):
+    n_samples, win_len, n_features = X_windows.shape
+    X_flat = X_windows.reshape(n_samples, win_len * n_features)
+
+    ros = RandomOverSampler(sampling_strategy='auto')
+    X_balanced, y_balanced = ros.fit_resample(X_flat, y_windows)
+
+    return X_balanced, y_balanced
 
 def oversample_minority(X: pd.DataFrame,
                                 y: pd.Series,
