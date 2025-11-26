@@ -24,10 +24,7 @@ def OCSVMClassifier(X: Optional[np.ndarray],
                     kernel: str = "rbf",
                     gamma: str = "scale",
                     **kwargs):
-    """
-    Create (and optionally fit) a OneClassSVM.
-    nu approximates the fraction of outliers (0 < nu <= 1).
-    """
+    ''' Create and train a One-Class SVM model. '''
 
     clf = OneClassSVM(nu=nu, kernel=kernel, gamma=gamma, **kwargs)
 

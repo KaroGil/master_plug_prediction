@@ -50,9 +50,7 @@ def load_split_data(data: list, dataset_name: str, base_path="../data/processed_
 
 def sort_values_by_timestamp(df):
     ''' Sort DataFrame by its timestamp index '''
-
-    df_sorted = df.sort_index()
-    return df_sorted
+    return df.sort_index()
 
 
 def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow'], mask=300):
@@ -189,25 +187,6 @@ def reduce_features(X_train, X_val, X_test, features_to_remove):
     return X_train_reduced, X_val_reduced, X_test_reduced
 
 
-def remove_correlated_features(df, threshold=0.9):
-    '''Remove highly correlated features from DataFrame'''
-
-    corr = df.corr().abs()
-    upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
-
-    to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
-
-    print(f"⚙️ Removing {len(to_drop)} correlated features with threshold > {threshold}: {to_drop}")
-
-    selected = ~df.columns.isin(to_drop)
-
-    if selected.sum() == 0:
-        print("Warning: No features left after correlation removal. Adjust threshold.")            
-        selected = np.ones(len(df.columns), dtype=bool)
-    
-    return selected
-
-
 def shap_feature_importance(X_train, y_train, shap_subset_size=1000):
     ''' 
     Calculate SHAP feature importance for the given model and training data, and
@@ -266,32 +245,6 @@ def remove_shap_low_importance_features(X, selected):
     '''Remove low importance features based on SHAP selection mask'''
 
     return X.loc[:, selected]
-
-
-# RESAMPLING TECHNIQUES
-def SMOTE_model(X_train, y_train):
-    '''Apply SMOTE to balance classes in training data'''
-
-    smote = SMOTE(random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    print('After SMOTE:', y_train_resampled.value_counts())
-    print('After SMOTE (%):', y_train_resampled.value_counts(normalize=True))
-
-    return X_train_resampled, y_train_resampled
-
-
-def undersample_model(X_train, y_train, sampling_strategy=0.5, random_state=42):
-    """
-    Apply Random Under-Sampling to balance classes in training data
-    """
-    rus = RandomUnderSampler(sampling_strategy=sampling_strategy, random_state=random_state)
-    X_resampled, y_resampled = rus.fit_resample(X_train, y_train)
-
-    print('After undersampling:', y_resampled.value_counts())
-    print('After undersampling (%):', y_resampled.value_counts(normalize=True))
-
-    return X_resampled, y_resampled
-
 
 
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):

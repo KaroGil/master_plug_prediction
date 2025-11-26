@@ -86,7 +86,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
         val_acc = f1_score(y_val, val_pred, average='weighted')
         train_acc = f1_score(y_train, train_pred, average='weighted')
 
-        print(f"Params: {params} | Validation F1 Score = {val_acc:.4f} | Training F1 Score = {train_acc:.4f}" if verbose_level > 1 else "")
+        print(f"Params: {params} | Training F1 Score = {train_acc:.4f} | Validation F1 Score = {val_acc:.4f}" if verbose_level > 1 else "")
 
         if val_acc > best_score:
             best_score = val_acc
@@ -95,7 +95,7 @@ def time_series_hyperparameter_search(model, param_grid, X_train, y_train, X_val
             best_model = model
 
     print("\n✅ Best parameters found:", best_params)
-    print(f"Best validation F1 Score: {best_score:.4f} | Training F1 Score = {best_train_score:.4f}" if verbose_level > 0 else "")
+    print(f"Best Training F1 Score = {best_train_score:.4f} | Best Validation F1 Score = {best_score:.4f}" if verbose_level > 0 else "")
 
 
     return best_model, best_params, best_score
@@ -124,8 +124,8 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
     search.fit(X_train, y_train)
 
     print("\nBest parameters:", search.best_params_)
-    print("Best F1 score:", search.best_score_)
     print("Best Training F1 score:", f1_score(y_train, search.predict(X_train), average='weighted'))
+    print("Best F1 score:", search.best_score_)
 
     return search.best_estimator_, search.best_params_, search.best_score_
 

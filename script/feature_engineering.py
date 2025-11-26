@@ -1,5 +1,3 @@
-
-
 def rolling_features(df, window=10, functions=['mean', 'std', 'min', 'max']):
     '''
     Generate rolling features for the given DataFrame.
