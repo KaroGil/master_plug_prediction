@@ -5,16 +5,16 @@ from sklearn.metrics import confusion_matrix, precision_recall_curve, average_pr
 from sklearn.calibration import calibration_curve
 
 
-def plot_feature_histograms(data):
+def plot_feature_histograms(data, name=None):
     '''Histograms for each numeric feature'''
 
     data.select_dtypes(include=[np.number]).hist(bins=30, figsize=(15, 10), layout=(2, -1))
-    plt.suptitle('Histograms of Features', fontsize=16)
+    plt.suptitle(f'Histograms of Features for {name}' if name else 'Histograms of Features', fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
 
-def plot_feature_boxplots(data):
+def plot_feature_boxplots(data, name=None):
     '''Boxplots for each numeric feature'''
 
     df_numeric = data.select_dtypes(include=[np.number])
@@ -27,7 +27,7 @@ def plot_feature_boxplots(data):
 
     for i, col in enumerate(df_numeric.columns):
         sns.boxplot(x=df_numeric[col], ax=axes[i], color="skyblue")
-        axes[i].set_title(f'Boxplot of {col}')
+        axes[i].set_title(f'Boxplot of {col} for {name}' if name else f'Boxplot of {col}')
         axes[i].set_xlabel("")
 
     # Hide any unused subplots
@@ -38,7 +38,7 @@ def plot_feature_boxplots(data):
     plt.show()
 
 
-def visualize_flow_rate(data):
+def visualize_flow_rate(data, name=None):
     '''Visualize flow rate and pump outlet pressure over time'''
 
     plt.figure(figsize=(12,6))
@@ -47,12 +47,12 @@ def visualize_flow_rate(data):
 
     plt.xlabel("Time")
     plt.ylabel("Value")
-    plt.title("Flow rate & Pump outlet pressure over time")
+    plt.title(f"Flow rate & Pump outlet pressure over time for {name}" if name else "Flow rate & Pump outlet pressure over time")
     plt.legend()
     plt.show()
 
 
-def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None):
+def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None):
     '''Plot Flow rate, Pump outlet pressure, Drop pressure and Temperature over time'''
 
     if start_time and end_time:
@@ -64,13 +64,13 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None):
         plt.plot(data.index, data[col], label=col, color=colors[i % len(colors)])
     plt.xlabel("Time")
     plt.ylabel("Value")
-    plt.title("All Signals Over Time")
+    plt.title(f"All Signals Over Time for {name}" if name else "All Signals Over Time")
     plt.legend(loc='upper left', bbox_to_anchor=(1,1))
     plt.tight_layout()
     plt.show()
 
 
-def visualize_plug_event(data, anomalies=False):
+def visualize_plug_event(data, anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -92,12 +92,12 @@ def visualize_plug_event(data, anomalies=False):
 
     plt.xlabel("Time")
     plt.ylabel("Value")
-    plt.title("Plug=1 Events Highlighted on Flow and Pressure")
+    plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
     plt.legend()
     plt.show()
 
 
-def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None):
+def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, plotLabel=True):
     plt.figure(figsize=(12,6))
 
     flow_col = "Flow rate (Mean)"
@@ -106,10 +106,13 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None):
     # Plot all data
     plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
     plt.plot(df.index, df[pressure_col], label="Pump outlet pressure", alpha=0.5)
-    # Highlight Plug=1 events #TODO: change to plug_future? instead of plug? since thats what we are predicting?
-    plug_events = df[df["Plug_future"] == 1]
-    plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5)
-    plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5)
+
+    # Highlight true Plug_future=1 events
+    if plotLabel:
+        plug_events = df[df["Plug_future"] == 1]
+        plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5)
+        plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5)
+        
     # Highlight anomalies
     if anomalies and "Anomaly" in df.columns:
         anomaly_events = df[df["Anomaly"] == 1]

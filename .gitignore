@@ -1,6 +1,5 @@
 # Ignore data directories
-data/raw_data/data1/*
-data/raw_data/data2/*
+data/raw_data/*
 
 data/processed_data/*
 

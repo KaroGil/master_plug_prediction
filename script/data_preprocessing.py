@@ -4,10 +4,8 @@ import shap
 import joblib
 import numpy as np
 import pandas as pd
-from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from imblearn.under_sampling import RandomUnderSampler
 
 from . import feature_engineering as fe
 from . import oversampling as ov
@@ -20,19 +18,66 @@ scaler_path = os.path.join(BASE_DIR, '..', 'models', 'standard_scaler.pkl')
 scaler_path = os.path.abspath(scaler_path)
 
 #### Functions for data preprocessing ###
+def read_unify_data(path="../data/raw_data/data1/*.csv"):
+    '''Read a CSV file with unified separator and decimal'''
+
+    with open(path, 'r') as file:
+        heaeder_line = file.readline()
+
+    sep = ';' if ';' in heaeder_line else ','
+
+    decimal = '.'
+
+    with open(path, 'r') as file:
+        for _ in range(5):
+            line = file.readline()
+            if ',' in line and sep == ';':
+                decimal = ','
+                break
+            if '.' in line and sep == ',':
+                decimal = '.'
+                break
+    
+    return pd.read_csv(path, sep=sep, decimal=decimal)
+
+
+COLUMN_RENAME_MAP = {
+    "Time": "Time",
+    "Flow rate (Arith. Mean)": "Flow rate (Mean)",
+    "Pressure before pump (Arith. Mean)": "TS inlet pressure (Mean)",
+    "Pressure after pump (Arith. Mean)": "Pump outlet pressure (Mean)",
+    "Temperature TS inlet (Arith. Mean)": "Temperature TS inlet (Mean)",
+    "Temperature TS outlet (Arith. Mean)": "Temperature TS outlet (Mean)",
+    "Tank temperature (Arith. Mean)": "Tank temperature (Mean)",
+    "Bypass temperature (Arith. Mean)": "Bypass temperature (Mean)",
+    "Differential pressure (Arith. Mean)": "Differential pressure (Mean)",
+}
+
+def standardize_column_names(df):
+    df = df.rename(columns=COLUMN_RENAME_MAP)
+    return df
+
+
 def load_data(path="../data/raw_data/data1/*.csv"):
     '''Load and concatenate CSV files from a given path'''
 
     files = sorted(glob.glob(path))
-    df_list = [pd.read_csv(f, sep=";", decimal=",") for f in files]
+    
+    df_list = [read_unify_data(f) for f in files]
 
     df = pd.concat(df_list)
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S,%f")
+
+    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
+
+    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
+
+    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
     df['Elapsed_seconds'] = (df['Time'] - df['Time'].iloc[0]).dt.total_seconds()
 
     df.drop(columns=['Time'], inplace=True)
-
     df = df.set_index('Elapsed_seconds')
+
+    df = standardize_column_names(df)
 
     return df
 
@@ -252,6 +297,18 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
     for key, df in data.items():
         df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=True)
     print(f"💾 Saved data with base name: {dataset_name}")
+
+def align_features(df, FEATURES):
+    FEATURES = [col for col in FEATURES if col != "Elapsed_seconds"]
+    # Add missing columns as NaN
+    for col in FEATURES:
+        if col not in df.columns:
+            df[col] = 0  # or np.nan depending on model
+
+    # Drop extra columns the model never saw
+    df = df[FEATURES]
+
+    return df
     
 
 def preprocess_data(df, dataset_name):
@@ -275,14 +332,9 @@ def preprocess_data(df, dataset_name):
     X_val = remove_shap_low_importance_features(X_val, selected)
     X_test = remove_shap_low_importance_features(X_test, selected)
 
-    X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+    #X_train, y_train = ov.oversample_minority(X_train, y_train)
 
-    X_train, y_train = ov.oversample_minority(
-        X_train,
-        y_train,
-        target_ratio=1.0,       
-        random_state=42
-    )
+    X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
 
     data_to_save = {
         'X_train': X_train,
@@ -295,11 +347,21 @@ def preprocess_data(df, dataset_name):
 
     save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
+    FEATURES = X_train.columns.tolist()
+    FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'features_list.pkl')
+    FEATURES_PATH = os.path.abspath(FEATURES_PATH)
+    joblib.dump(FEATURES, FEATURES_PATH)
+
+
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 def preprocess_data_predict(df):
     '''Full preprocessing pipeline for prediction'''
+
+    FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'features_list.pkl')
+    FEATURES_PATH = os.path.abspath(FEATURES_PATH)
+    FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
     df = sort_values_by_timestamp(df)
 
@@ -310,13 +372,7 @@ def preprocess_data_predict(df):
     y = df['Plug_future'].squeeze()
 
     X = fe.rolling_features(X)
-
-    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
-    shap_path = os.path.abspath(shap_path)
-    
-    shap_selected = joblib.load(shap_path)
-
-    X = remove_shap_low_importance_features(X, shap_selected)
+    X = align_features(X, FEATURES)
 
     scalar = joblib.load(scaler_path)
     numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
