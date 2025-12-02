@@ -112,80 +112,35 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
     tscv = TimeSeriesSplit(n_splits=5)
 
-    scoring = {"F1-score": "f1_weighted", "Recall": "recall", "Precision": "precision", "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')}
+    scoring = {"F1-score": "f1_weighted", "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')}
 
     search = RandomizedSearchCV(
         estimator=model,
         param_distributions=params,
         n_iter=n_iter,
         scoring=scoring,
-        refit='F2-score',
+        refit='F1-score',
         cv=tscv,            
         n_jobs=-1,
         verbose=2,
         random_state=42,
-        error_score='raise'
+        error_score='raise',
+        return_train_score=True
     )
     pos = sum(y_train == 1)
     neg = sum(y_train == 0)
-    ratio = neg / pos
+    ratio = neg / pos if pos != 0 else 1
+
     search.fit(X_train, y_train, sample_weight=np.where(y_train == 1, ratio, 1))
 
     print("\nBest parameters:", search.best_params_)
-    pred_train = search.predict(X_train)
-    print("Best Training F1 score:", f1_score(y_train, pred_train, average='weighted'))
+    print("Best Training F1 score:", search.cv_results_['mean_train_F1-score'][search.best_index_])
     print("Best F1 score:", search.best_score_)
 
     cv_results = pd.DataFrame(search.cv_results_)
-    print(cv_results.filter(regex="split"))  # all split scores
+    print(cv_results.filter(regex="split")) 
 
     return search.best_estimator_, search.best_params_, search.best_score_
-
-# def tune_random_search(model, X_train, y_train, X_val, y_val, params, n_iter=40):
-#     """Randomized hyperparameter search using a single validation split."""
-
-#     # Optional: anomaly filtering
-#     if check_anomaly_model(model):
-#         mask = (y_train == 0)  # remove anomalies only from train, keep in val!
-#         X_train = X_train[mask]
-#         y_train = y_train[mask]
-
-#     # 2. Sample weights for training (your class-balance trick)
-#     pos = sum(y_train == 1)
-#     neg = sum(y_train == 0)
-#     ratio = neg / pos
-#     sample_w = np.where(y_train == 1, ratio, 1)
-
-#     # 3. Randomized search on TRAIN / validation on VAL
-#     best_score = -np.inf
-#     best_params = None
-#     best_model = None
-
-#     for _ in range(n_iter):
-#         # Randomly pick params
-#         params_sample = {k: random.choice(v) for k, v in params.items()}
-#         print(f"Trying params: {params_sample}")
-
-#         # Train model
-#         m = model.set_params(**params_sample)
-#         m.fit(X_train, y_train, sample_weight=sample_w)
-
-#         # Evaluate on val
-#         pred = m.predict(X_val)
-#         score = f1_score(y_val, pred, average="weighted")
-
-#         print(f"Params: {params_sample} | Validation F1 Score = {score:.4f}")
-
-#         if score > best_score:
-#             best_score = score
-#             best_params = params_sample
-#             best_model = m
-
-#     print("\nBest params:", best_params)
-#     print("Best validation F1:", best_score)
-#     print("\nValidation performance:\n", classification_report(y_val, best_model.predict(X_val)))
-
-#     return best_model, best_params, best_score
 
 
 def get_models_and_params(data):
@@ -211,8 +166,8 @@ def get_models_and_params(data):
         ratio = neg / pos
 
         models = {
-            "Random Forest": RandomForestClassifier(class_weight='balanced'),
-            "SVM": SVC(probability=True, class_weight='balanced'),
+            #"Random Forest": RandomForestClassifier(class_weight='balanced'),
+            #"SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight=ratio),
         }
 
@@ -231,12 +186,14 @@ def get_models_and_params(data):
             },
             "XGBoost": {
                 'n_estimators': [200, 500],
-                'max_depth': [4, 6, 8],
+                'min_child_weight': [3, 7, 10],
+                'max_depth': [3, 4, 6],
                 'learning_rate': [0.01, 0.05, 0.1],
-                'subsample': [0.6, 0.8, 1.0],
-                'colsample_bytree': [0.6, 0.8, 1.0],
-                'gamma': [0, 1, 5],
+                'subsample': [0.6, 0.75, 0.9],
+                'colsample_bytree': [0.6, 0.75, 0.9],
                 'base_score': [0.5],
+                'reg_alpha': [0, 0.1, 0.5],
+                'reg_lambda': [1, 1.5, 2.0]
             },
         }
 
@@ -313,7 +270,7 @@ def evaluate_model_on_test(model, X_test, y_test):
 
     y_test_pred = model.predict(X_test)
     if check_anomaly_model(model):
-        y_test_pred = np.where(y_test_pred == -1, 1, 0)  # Convert to anomaly labels
+        y_test_pred = np.where(y_test_pred == -1, 1, 0)
     print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
@@ -335,6 +292,7 @@ def get_learning_curve_data(model, X_train, y_train, cv=5, train_sizes=np.linspa
 def model_data(X_train, y_train, X_val, y_val, X_test, y_test):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
+    baseline_model(X_train, y_train, X_val, y_val)
     best_model = find_best_model(X_train, y_train, X_val, y_val, verbose_level=2)
     save_model(best_model)
     final_model = retrain_final_model(X_train, X_val, y_train, y_val, best_model)

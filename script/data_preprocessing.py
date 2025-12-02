@@ -72,10 +72,15 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     df['Time'] = df['Time'].str.replace(',', '.', regex=False)
 
     df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
-    df['Elapsed_seconds'] = (df['Time'] - df['Time'].iloc[0]).dt.total_seconds()
+    
+    # Sort by Time 
+    df.set_index('Time', inplace=True)
+    df.sort_index(inplace=True)
 
-    df.drop(columns=['Time'], inplace=True)
-    df = df.set_index('Elapsed_seconds')
+    # Create Elapsed_seconds column to track time progression
+    #df['Elapsed_seconds'] = (df.index - df.index[0]).total_seconds()
+
+    df.reset_index(drop=True, inplace=True)
 
     df = standardize_column_names(df)
 
@@ -92,11 +97,6 @@ def load_split_data(data: list, dataset_name: str, base_path="../data/processed_
 
     return loaded_data
     
-
-def sort_values_by_timestamp(df):
-    ''' Sort DataFrame by its timestamp index '''
-    return df.sort_index()
-
 
 def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow'], mask=300):
     ''' Make the target column based on tresholds '''
@@ -295,17 +295,14 @@ def remove_shap_low_importance_features(X, selected):
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
     for key, df in data.items():
-        df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=True)
+        df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
     print(f"💾 Saved data with base name: {dataset_name}")
 
 def align_features(df, FEATURES):
-    FEATURES = [col for col in FEATURES if col != "Elapsed_seconds"]
-    # Add missing columns as NaN
     for col in FEATURES:
         if col not in df.columns:
-            df[col] = 0  # or np.nan depending on model
+            df[col] = 0 
 
-    # Drop extra columns the model never saw
     df = df[FEATURES]
 
     return df
@@ -313,9 +310,7 @@ def align_features(df, FEATURES):
 
 def preprocess_data(df, dataset_name):
     '''Full preprocessing pipeline for model selection and training'''
-
-    df = sort_values_by_timestamp(df)
-
+    
     create_target_column(df)
     create_future_target(df)
 
@@ -332,9 +327,9 @@ def preprocess_data(df, dataset_name):
     X_val = remove_shap_low_importance_features(X_val, selected)
     X_test = remove_shap_low_importance_features(X_test, selected)
 
-    #X_train, y_train = ov.oversample_minority(X_train, y_train)
-
     X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+
+    X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
 
     data_to_save = {
         'X_train': X_train,
@@ -352,7 +347,6 @@ def preprocess_data(df, dataset_name):
     FEATURES_PATH = os.path.abspath(FEATURES_PATH)
     joblib.dump(FEATURES, FEATURES_PATH)
 
-
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
@@ -362,8 +356,6 @@ def preprocess_data_predict(df):
     FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'features_list.pkl')
     FEATURES_PATH = os.path.abspath(FEATURES_PATH)
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
-
-    df = sort_values_by_timestamp(df)
 
     create_target_column(df)
     create_future_target(df)

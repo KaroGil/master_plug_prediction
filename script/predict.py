@@ -23,6 +23,7 @@ joblib.dump(FEATURES, FEATURES_PATH)
 X, y, unscaled_X = preprocess_data_predict(data)
 
 model = joblib.load("models/best_model.joblib")
+print("Model used: " + type(model).__name__ + " with parameters: " + str(model.get_params()))
 
 predictions = model.predict(X)
 

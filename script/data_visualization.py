@@ -42,10 +42,10 @@ def visualize_flow_rate(data, name=None):
     '''Visualize flow rate and pump outlet pressure over time'''
 
     plt.figure(figsize=(12,6))
-    plt.plot(data.index, data["Flow rate (Mean)"], label="Flow rate")
-    plt.plot(data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure")
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate")
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure")
 
-    plt.xlabel("Time")
+    plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Flow rate & Pump outlet pressure over time for {name}" if name else "Flow rate & Pump outlet pressure over time")
     plt.legend()
@@ -61,8 +61,8 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     plt.figure(figsize=(16,8))
     colors = plt.cm.tab20.colors  # Use a colormap for up to 20 columns, cycle if more
     for i, col in enumerate(data.columns):
-        plt.plot(data.index, data[col], label=col, color=colors[i % len(colors)])
-    plt.xlabel("Time")
+        plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data[col], label=col, color=colors[i % len(colors)])
+    plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"All Signals Over Time for {name}" if name else "All Signals Over Time")
     plt.legend(loc='upper left', bbox_to_anchor=(1,1))
@@ -76,8 +76,8 @@ def visualize_plug_event(data, anomalies=False, name=None):
     plt.figure(figsize=(12,6))
 
     # Plot all data
-    plt.plot(data.index, data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
-    plt.plot(data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
 
     # Highlight Plug=1 events
     plug_events = data[data["Plug"] == 1]
@@ -90,7 +90,7 @@ def visualize_plug_event(data, anomalies=False, name=None):
         plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
         plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
 
-    plt.xlabel("Time")
+    plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
     plt.legend()
@@ -125,7 +125,7 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')
 
 
-    plt.xlabel("Time")
+    plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     model_name_str = f" by {model_name}" if model_name else ""
     plt.title(f"Predicted vs True Plug=1 Events{model_name_str}")
