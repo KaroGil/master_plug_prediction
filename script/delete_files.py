@@ -6,6 +6,8 @@ def delete_files_in_directory(directory):
     if os.path.exists(directory):
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)
+            if file_path.endswith(".gitkeep"):
+                continue 
             try:
                 if os.path.isfile(file_path):
                     os.remove(file_path)
@@ -19,5 +21,5 @@ def delete_files_in_directory(directory):
 
 
 delete_files_in_directory("models/")
-delete_files_in_directory("processed_data/")
+delete_files_in_directory("data/processed_data/")
 print("Cleanup complete!")
