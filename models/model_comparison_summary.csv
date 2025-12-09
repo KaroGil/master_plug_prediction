@@ -1,0 +1,3 @@
+Model,Best Validation F1 Score
+Dummy (baseline),0.6789667452065817
+XGBoost,1.0

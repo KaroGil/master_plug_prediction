@@ -58,16 +58,18 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     if start_time and end_time:
         data = data.loc[start_time:end_time]
 
-    plt.figure(figsize=(16,8))
-    colors = plt.cm.tab20.colors  # Use a colormap for up to 20 columns, cycle if more
+    fig, ax = plt.subplots(figsize=(16,8))
+    colors = plt.cm.tab20.colors 
     for i, col in enumerate(data.columns):
-        plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data[col], label=col, color=colors[i % len(colors)])
-    plt.xlabel("Elapsed_seconds")
-    plt.ylabel("Value")
-    plt.title(f"All Signals Over Time for {name}" if name else "All Signals Over Time")
-    plt.legend(loc='upper left', bbox_to_anchor=(1,1))
-    plt.tight_layout()
+        ax.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data[col], label=col, color=colors[i % len(colors)])
+    ax.set_xlabel("Elapsed_seconds")
+    ax.set_ylabel("Value")
+    ax.set_title(f"All Signals Over Time for {name}" if name else "All Signals Over Time")
+    ax.legend(loc='upper left', bbox_to_anchor=(1,1))
+    fig.tight_layout()
     plt.show()
+
+    return fig
 
 
 def visualize_plug_event(data, anomalies=False, name=None):
