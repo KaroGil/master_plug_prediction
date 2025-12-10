@@ -53,6 +53,18 @@ COLUMN_RENAME_MAP = {
     "Differential pressure (Arith. Mean)": "Differential pressure (Mean)",
 }
 
+df_other = {
+    "Time": "Time",
+    "Flow rate (Mean)": "Flow rate (Arith. Mean)",
+    "Pressure before pump (Mean)": "TS inlet pressure (Arith. Mean)",
+    "Pressure after pump (Mean)": "Pump outlet pressure (Arith. Mean)",
+    "Temperature TS inlet (Mean)": "Temperature TS inlet (Arith. Mean)",
+    "Temperature TS outlet (Mean)": "Temperature TS outlet (Arith. Mean)",
+    "Tank temperature (Mean)": "Tank temperature (Arith. Mean)",
+    "Bypass temperature (Mean)": "Bypass temperature (Arith. Mean)",
+    "Differential pressure (Mean)": "Differential pressure (Arith. Mean)",
+}
+
 def standardize_column_names(df):
     df = df.rename(columns=COLUMN_RENAME_MAP)
     return df
@@ -82,7 +94,10 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
     df.reset_index(drop=True, inplace=True)
 
-    df = standardize_column_names(df)
+    if path == "../data/raw_data/data5/*.csv":
+        df = df = df.rename(columns=df_other)
+    else:
+        df = standardize_column_names(df)
 
     return df
 
@@ -314,22 +329,26 @@ def preprocess_data(df, dataset_name):
     create_target_column(df)
     create_future_target(df)
 
+    # df_feat = df.select_dtypes(include=['number']).columns.tolist()
+    # df_feat = [col for col in df_feat if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    # df = fe.build_time_features(df, sensor_cols=df_feat)
+
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
     print_distribution(y_train, "Training set")
     print_distribution(y_val, "Validation set")
     print_distribution(y_test, "Test set")
 
-    X_train = fe.rolling_features(X_train)
-    X_val = fe.rolling_features(X_val)
-    X_test = fe.rolling_features(X_test)
+    # X_train = fe.rolling_features(X_train)
+    # X_val = fe.rolling_features(X_val)
+    # X_test = fe.rolling_features(X_test)
 
-    X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
-    X_val = remove_shap_low_importance_features(X_val, selected)
-    X_test = remove_shap_low_importance_features(X_test, selected)
+    # X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
+    # X_val = remove_shap_low_importance_features(X_val, selected)
+    # X_test = remove_shap_low_importance_features(X_test, selected)
 
-    X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
+    # X_train, X_val, X_test = scale_features(X_train, X_val, X_test)
 
-    X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
+    #X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
 
     data_to_save = {
         'X_train': X_train,
@@ -357,19 +376,23 @@ def preprocess_data_predict(df):
     FEATURES_PATH = os.path.abspath(FEATURES_PATH)
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
+    # df_feat = df.select_dtypes(include=['number']).columns.tolist()
+    # df_feat = [col for col in df_feat if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    # df = fe.build_time_features(df, sensor_cols=df_feat)
+
     create_target_column(df)
     create_future_target(df)
 
     X = df.drop(columns=['Plug', 'Plug_future'])
     y = df['Plug_future'].squeeze()
 
-    X = fe.rolling_features(X)
+    # X = fe.rolling_features(X)
     X = align_features(X, FEATURES)
 
-    scalar = joblib.load(scaler_path)
-    numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
-    unscaled_X = X.copy()
-    X[numeric_cols] = scalar.transform(X[numeric_cols])
+    # scalar = joblib.load(scaler_path)
+    # numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
+    # numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    # unscaled_X = X.copy()
+    # X[numeric_cols] = scalar.transform(X[numeric_cols])
 
-    return X, y, unscaled_X
+    return X, y, X

@@ -166,18 +166,18 @@ def get_models_and_params(data):
         ratio = neg / pos
 
         models = {
-            #"Random Forest": RandomForestClassifier(class_weight='balanced'),
+            "Random Forest": RandomForestClassifier(class_weight='balanced'),
             #"SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight=ratio),
         }
 
         hyperparameters = {
             "Random Forest": {
-                'n_estimators': [200, 400, 800],
-                'max_depth': [10, 20, 40, None],
-                'min_samples_split': [2, 5, 10],
-                'min_samples_leaf': [1, 2, 4],
-                'max_features': ['sqrt', 'log2', 0.3, 0.5]
+                # 'n_estimators': [200, 400, 800],
+                # 'max_depth': [10, 20, 40, None],
+                # 'min_samples_split': [2, 5, 10],
+                # 'min_samples_leaf': [1, 2, 4],
+                # 'max_features': ['sqrt', 'log2', 0.3, 0.5]
             },
             
             "SVM": {
@@ -185,15 +185,15 @@ def get_models_and_params(data):
                 'kernel': ['linear'] #commented out ['rbf'] for faster convergence
             },
             "XGBoost": {
-                'n_estimators': [200, 500],
-                'min_child_weight': [3, 7, 10],
-                'max_depth': [3, 4, 6],
-                'learning_rate': [0.01, 0.05, 0.1],
-                'subsample': [0.6, 0.75, 0.9],
-                'colsample_bytree': [0.6, 0.75, 0.9],
-                'base_score': [0.5],
-                'reg_alpha': [0, 0.1, 0.5],
-                'reg_lambda': [1, 1.5, 2.0]
+                # 'n_estimators': [200, 500],
+                # 'min_child_weight': [3, 7, 10],
+                # 'max_depth': [3, 4, 6],
+                # 'learning_rate': [0.01, 0.05, 0.1],
+                # 'subsample': [0.6, 0.75, 0.9],
+                # 'colsample_bytree': [0.6, 0.75, 0.9],
+                # 'base_score': [0.5],
+                # 'reg_alpha': [0, 0.1, 0.5],
+                # 'reg_lambda': [1, 1.5, 2.0]
             },
         }
 
@@ -220,7 +220,8 @@ def find_best_model(X_train, y_train, X_val, y_val, verbose_level=1, visualize=F
         else:
             best_model, best_params, best_score = tune_random_search(
             model,
-            X_train, y_train,
+            pd.concat([X_train, X_val]),
+            pd.concat([y_train, y_val]),
             hyperparameters[name],
             n_iter=20
         )
