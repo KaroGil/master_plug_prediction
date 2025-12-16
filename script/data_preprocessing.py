@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 
 from . import feature_engineering as fe
-from . import oversampling as ov
+from . import window as w
 
 
 # Define scaler path
@@ -85,6 +85,9 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
     df = standardize_column_names(df)
 
+    # Drop any columns that are unnamed
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
     return df
 
 
@@ -133,7 +136,7 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
         df["Plug"] = np.where((pressure_plug), 1, df["Plug"])
 
 
-def create_future_target(df, shift=-10):
+def create_future_target(df, shift=-200):
     '''Create target column 'Plug_future' by shifting 'Plug' column'''
 
     # Predict plug event 10 steps ahead
@@ -159,11 +162,9 @@ def train_val_test_split(X,y,test_size=0.01):
     return X_train, X_test, y_train, y_test
 
 
-def split_data(df):
+def split_data(X, y):
     '''Split data into features and target, then into train, val, test sets'''
 
-    X = df.drop(columns=['Plug', 'Plug_future'])
-    y = df['Plug_future'].squeeze()
 
     print("y shape :", y.shape)
 
@@ -336,21 +337,48 @@ def align_features(df, FEATURES):
     return df
     
 
-def preprocess_data(df, dataset_name):
+def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None):
     '''Full preprocessing pipeline for model selection and training'''
     
     create_target_column(df) # Makes plug = 1/0 column, based on flow/pressure threshold
-    create_future_target(df) # Creates Plug_future column by shifting Plug column by -10
+    create_future_target(df) # Creates Plug_future column by shifting Plug column by -200 ( since sampling rate is 20Hz, this is 10 seconds ahead)
 
     df_feat = df.select_dtypes(include=['number']).copy()
-    df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
-    df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
 
-    print("DEBUG: df shape after build_time_features:", df.shape)
-    print("DEBUG: first 10 columns after FE:", list(df.columns[:10]))
+    X, y = w.prep_window(df, features=df_feat.columns.tolist())
+    print("DEBUG: X shape after prep_window:", X.shape)
+    print("DEBUG: y shape after prep_window:", y.shape)
+    print("--- ------ ----- before additional data ---- ----- -----", X)
+
+    if additional_data is not None and additional_data_name is not None:
+        for add_df, add_name in zip(additional_data, additional_data_name):
+            print(f"Processing additional data: {add_name}")
+            create_target_column(add_df)
+            create_future_target(add_df)
+
+            add_df_feat = add_df.select_dtypes(include=['number']).copy()
+
+            X_add, y_add = w.prep_window(add_df, features=add_df_feat.columns.tolist())
+            print("DEBUG: Additional X shape after prep_window:", X_add.shape)
+            print("DEBUG: Additional y shape after prep_window:", y_add.shape)
+
+            X = pd.concat([X, X_add], ignore_index=True)
+            y = pd.concat([y, y_add], ignore_index=True)
+
+            print(f"Combined X shape: {X.shape}")
+            print(f"Combined y shape: {y.shape}")
+
+    print("--- ------ ----- after additional data ---- ----- -----", X)
 
 
-    X_train, X_test, y_train, y_test = split_data(df) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
+    # df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
+    # df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
+
+    # print("DEBUG: df shape after build_time_features:", df.shape)
+    # print("DEBUG: first 10 columns after FE:", list(df.columns[:10]))
+
+
+    X_train, X_test, y_train, y_test = split_data(X, y) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
 
@@ -396,11 +424,10 @@ def preprocess_data_predict(df):
     create_future_target(df)
 
     df_feat = df.select_dtypes(include=['number']).copy()
-    df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
-    df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
+    # df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
+    # df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
 
-    X = df.drop(columns=['Plug', 'Plug_future'])
-    y = df['Plug_future'].squeeze()
+    X, y = w.prep_window(df, features=df_feat.columns.tolist())
 
     #X = fe.rolling_features(X)
     # Don´t need to remove shap low importance features here, as we will align to training features
@@ -411,6 +438,8 @@ def preprocess_data_predict(df):
     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
     unscaled_X = X.copy()
     X[numeric_cols] = scalar.transform(X[numeric_cols])
+
+    print(X.columns)
 
     return X, y, unscaled_X
 
