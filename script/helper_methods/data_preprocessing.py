@@ -11,11 +11,14 @@ from . import feature_engineering as fe
 from . import window as w
 
 
-# Define scaler path
+# Define paths
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-scaler_path = os.path.join(BASE_DIR, '..', 'models', 'standard_scaler.pkl')
+scaler_path = os.path.join(BASE_DIR, '..', '..', 'models', 'standard_scaler.pkl')
 scaler_path = os.path.abspath(scaler_path)
+
+FEATURES_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'features_list.pkl')
+FEATURES_PATH = os.path.abspath(FEATURES_PATH)
 
 #### Functions for data preprocessing ###
 def read_unify_data(path="../data/raw_data/data1/*.csv"):
@@ -290,7 +293,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     print("Reduced features:", X_train_reduced.shape[1])
 
     # save selected mask for later use
-    shap_path = os.path.join(BASE_DIR, '..', 'models', 'shap_selected_mask.pkl')
+    shap_path = os.path.join(BASE_DIR, '..', '..', 'models', 'shap_selected_mask.pkl')
     shap_path = os.path.abspath(shap_path)
     joblib.dump(selected, shap_path)
 
@@ -335,47 +338,36 @@ def align_features(df, FEATURES):
     df = df[FEATURES]
 
     return df
-    
 
-def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None):
-    '''Full preprocessing pipeline for model selection and training'''
-    
+def prep(df):
+    '''Basic preprocessing pipeline without train/test split'''
     create_target_column(df) # Makes plug = 1/0 column, based on flow/pressure threshold
     create_future_target(df) # Creates Plug_future column by shifting Plug column by -200 ( since sampling rate is 20Hz, this is 10 seconds ahead)
+
+    df = fe.feature_engineering_pipeline(df) 
 
     df_feat = df.select_dtypes(include=['number']).copy()
 
     X, y = w.prep_window(df, features=df_feat.columns.tolist())
-    print("DEBUG: X shape after prep_window:", X.shape)
-    print("DEBUG: y shape after prep_window:", y.shape)
-    print("--- ------ ----- before additional data ---- ----- -----", X)
+
+    return X, y
+
+def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None):
+    '''Full preprocessing pipeline for model selection and training'''
+
+    X, y = prep(df)
 
     if additional_data is not None and additional_data_name is not None:
         for add_df, add_name in zip(additional_data, additional_data_name):
-            print(f"Processing additional data: {add_name}")
-            create_target_column(add_df)
-            create_future_target(add_df)
-
-            add_df_feat = add_df.select_dtypes(include=['number']).copy()
-
-            X_add, y_add = w.prep_window(add_df, features=add_df_feat.columns.tolist())
-            print("DEBUG: Additional X shape after prep_window:", X_add.shape)
-            print("DEBUG: Additional y shape after prep_window:", y_add.shape)
+            print(f"Processing additional data: {add_name}") #TODO: make this into a function since you reuse it for every dataset before merger
+            X_add, y_add = prep(add_df)
 
             X = pd.concat([X, X_add], ignore_index=True)
             y = pd.concat([y, y_add], ignore_index=True)
 
-            print(f"Combined X shape: {X.shape}")
-            print(f"Combined y shape: {y.shape}")
-
-    print("--- ------ ----- after additional data ---- ----- -----", X)
-
 
     # df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
     # df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
-
-    # print("DEBUG: df shape after build_time_features:", df.shape)
-    # print("DEBUG: first 10 columns after FE:", list(df.columns[:10]))
 
 
     X_train, X_test, y_train, y_test = split_data(X, y) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
@@ -406,8 +398,7 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
     FEATURES = X_train.columns.tolist()
-    FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'features_list.pkl')
-    FEATURES_PATH = os.path.abspath(FEATURES_PATH)
+    
     joblib.dump(FEATURES, FEATURES_PATH)
 
     return X_train, X_test, y_train, y_test
@@ -416,8 +407,6 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
 def preprocess_data_predict(df):
     '''Full preprocessing pipeline for prediction'''
 
-    FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'features_list.pkl')
-    FEATURES_PATH = os.path.abspath(FEATURES_PATH)
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
     create_target_column(df)
@@ -442,12 +431,3 @@ def preprocess_data_predict(df):
     print(X.columns)
 
     return X, y, unscaled_X
-
-
-
-
-''''
-Flow rate (Mean),TS outlet pressure (Mean),Pump outlet pressure (Mean),Temperature TS outlet (Mean),Temperature TS inlet (Mean),Bypass temperature (Mean),Anomaly,Flow rate (Mean)_lag1,Flow rate (Mean)_lag5,Flow rate (Mean)_lag10,TS outlet pressure (Mean)_lag5,TS outlet pressure (Mean)_lag10,TS inlet pressure (Mean)_lag1,TS inlet pressure (Mean)_lag10,Pump outlet pressure (Mean)_lag5,Pump outlet pressure (Mean)_lag10,Temperature TS outlet (Mean)_lag1,Temperature TS outlet (Mean)_lag5,Temperature TS outlet (Mean)_lag10,Tank temperature (Mean)_lag1,Tank temperature (Mean)_lag10,Temperature TS inlet (Mean)_lag1,Temperature TS inlet (Mean)_lag5,Temperature TS inlet (Mean)_lag10,Bypass temperature (Mean)_lag1,Bypass temperature (Mean)_lag5,Bypass temperature (Mean)_lag10,Flow rate (Mean)_rollmean_10,Flow rate (Mean)_rollstd_10,Flow rate (Mean)_rollmin_10,Flow rate (Mean)_rollmax_10,Flow rate (Mean)_rollmean_30,Flow rate (Mean)_rollstd_30,Flow rate (Mean)_rollmin_30,Flow rate (Mean)_rollmax_30,Flow rate (Mean)_rollslope_30,Flow rate (Mean)_rollmean_60,Flow rate (Mean)_rollstd_60,Flow rate (Mean)_rollmin_60,Flow rate (Mean)_rollmax_60,TS outlet pressure (Mean)_rollmean_10,TS outlet pressure (Mean)_rollmax_10,TS outlet pressure (Mean)_rollmean_30,TS outlet pressure (Mean)_rollmin_30,TS outlet pressure (Mean)_rollmax_30,TS outlet pressure (Mean)_rollslope_30,TS outlet pressure (Mean)_rollmean_60,TS outlet pressure (Mean)_rollstd_60,TS outlet pressure (Mean)_rollmin_60,TS outlet pressure (Mean)_rollslope_60,TS inlet pressure (Mean)_rollmean_10,TS inlet pressure (Mean)_rollstd_10,TS inlet pressure (Mean)_rollmean_30,TS inlet pressure (Mean)_rollstd_30,TS inlet pressure (Mean)_rollmin_30,TS inlet pressure (Mean)_rollmean_60,TS inlet pressure (Mean)_rollmin_60,TS inlet pressure (Mean)_rollmax_60,TS inlet pressure (Mean)_rollslope_60,Pump outlet pressure (Mean)_rollmean_10,Pump outlet pressure (Mean)_rollstd_10,Pump outlet pressure (Mean)_rollmax_10,Pump outlet pressure (Mean)_rollstd_30,Pump outlet pressure (Mean)_rollmin_30,Pump outlet pressure (Mean)_rollmax_30,Pump outlet pressure (Mean)_rollslope_30,Pump outlet pressure (Mean)_rollmean_60,Pump outlet pressure (Mean)_rollstd_60,Pump outlet pressure (Mean)_rollmin_60,Pump outlet pressure (Mean)_rollmax_60,Temperature TS outlet (Mean)_rollmean_10,Temperature TS outlet (Mean)_rollstd_10,Temperature TS outlet (Mean)_rollmax_10,Temperature TS outlet (Mean)_rollslope_10,Temperature TS outlet (Mean)_rollmean_30,Temperature TS outlet (Mean)_rollmin_30,Temperature TS outlet (Mean)_rollmax_30,Temperature TS outlet (Mean)_rollslope_30,Temperature TS outlet (Mean)_rollmean_60,Temperature TS outlet (Mean)_rollstd_60,Temperature TS outlet (Mean)_rollmin_60,Temperature TS outlet (Mean)_rollmax_60,Tank temperature (Mean)_rollmean_10,Tank temperature (Mean)_rollmin_10,Tank temperature (Mean)_rollslope_10,Tank temperature (Mean)_rollmean_30,Tank temperature (Mean)_rollstd_30,Tank temperature (Mean)_rollmin_30,Tank temperature (Mean)_rollmax_30,Tank temperature (Mean)_rollslope_30,Tank temperature (Mean)_rollmean_60,Tank temperature (Mean)_rollstd_60,Tank temperature (Mean)_rollmin_60,Tank temperature (Mean)_rollmax_60,Temperature TS inlet (Mean)_rollmean_10,Temperature TS inlet (Mean)_rollstd_10,Temperature TS inlet (Mean)_rollmin_10,Temperature TS inlet (Mean)_rollmax_10,Temperature TS inlet (Mean)_rollmean_30,Temperature TS inlet (Mean)_rollmin_30,Temperature TS inlet (Mean)_rollmax_30,Temperature TS inlet (Mean)_rollmean_60,Temperature TS inlet (Mean)_rollmin_60,Temperature TS inlet (Mean)_rollmax_60,Temperature TS inlet (Mean)_rollslope_60,Bypass temperature (Mean)_rollmean_10,Bypass temperature (Mean)_rollmin_10,Bypass temperature (Mean)_rollmax_10,Bypass temperature (Mean)_rollmean_30,Bypass temperature (Mean)_rollstd_30,Bypass temperature (Mean)_rollmin_30,Bypass temperature (Mean)_rollmax_30,Bypass temperature (Mean)_rollslope_30,Bypass temperature (Mean)_rollmean_60,Bypass temperature (Mean)_rollstd_60,Bypass temperature (Mean)_rollmin_60,Bypass temperature (Mean)_rollmax_60,Flow rate (Mean)_diff5,TS inlet pressure (Mean)_diff1,TS inlet pressure (Mean)_diff10,Pump outlet pressure (Mean)_diff1,Pump outlet pressure (Mean)_diff10,Temperature TS outlet (Mean)_diff10,Tank temperature (Mean)_diff1,Tank temperature (Mean)_diff10,Temperature TS inlet (Mean)_diff1,Temperature TS inlet (Mean)_diff5,Temperature TS inlet (Mean)_diff10,Bypass temperature (Mean)_diff5,Flow rate (Mean)_to_TS inlet pressure (Mean)_ratio,Flow rate (Mean)_to_Pump outlet pressure (Mean)_ratio,Flow rate (Mean)_to_Temperature TS outlet (Mean)_ratio,Flow rate (Mean)_to_Tank temperature (Mean)_ratio,Flow rate (Mean)_to_Bypass temperature (Mean)_ratio,TS outlet pressure (Mean)_to_TS inlet pressure (Mean)_ratio,TS outlet pressure (Mean)_to_Tank temperature (Mean)_ratio,TS outlet pressure (Mean)_to_Temperature TS inlet (Mean)_ratio,TS inlet pressure (Mean)_to_Temperature TS outlet (Mean)_ratio,TS inlet pressure (Mean)_to_Tank temperature (Mean)_ratio,TS inlet pressure (Mean)_to_Temperature TS inlet (Mean)_ratio,Pump outlet pressure (Mean)_to_Temperature TS inlet (Mean)_ratio,Temperature TS outlet (Mean)_to_Tank temperature (Mean)_ratio,Tank temperature (Mean)_to_Temperature TS inlet (Mean)_ratio,Temperature TS inlet (Mean)_to_Bypass temperature (Mean)_ratio
-
-
-'''

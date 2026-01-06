@@ -236,7 +236,7 @@ def get_models_and_params(data):
 
         models = {
             "Dummy (baseline)": DummyClassifier(strategy="most_frequent"),
-            # "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
+            "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
             #"SVM": SVC(probability=True, class_weight='balanced'),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight=ratio),
         }
@@ -245,14 +245,14 @@ def get_models_and_params(data):
             "Dummy (baseline)": {
                 "strategy": ["most_frequent", "stratified"]
             },
-            # "Random Forest": {
-            #     'n_estimators': [100],
-            #     'max_depth': [5, 10, 20],
-            #     'min_samples_split': [20, 50, 100],
-            #     'min_samples_leaf': [1, 2, 4],
-            #     'max_leaf_nodes': [None, 100, 300, 500],
-            #     'max_features': ['sqrt', 'log2', 0.2, 0.5],
-            # },
+            "Random Forest": {
+                'n_estimators': [100],
+                'max_depth': [5, 10, 20],
+                'min_samples_split': [20, 50, 100],
+                'min_samples_leaf': [1, 2, 4],
+                'max_leaf_nodes': [None, 100, 300, 500],
+                'max_features': ['sqrt', 'log2', 0.2, 0.5],
+            },
             # "SVM": {
             #     'C': [1.0, 0.5],
             #     'kernel': ['linear'] #commented out ['rbf'] for faster convergence

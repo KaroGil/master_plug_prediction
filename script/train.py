@@ -1,6 +1,6 @@
 import sys
-from script.data_modeling import model_data
-from script.data_preprocessing import load_data, preprocess_data
+from script.helper_methods.data_modeling import model_data
+from script.helper_methods.data_preprocessing import load_data, preprocess_data
 import pandas as pd
 
 BASE_PATH = "data/raw_data/"

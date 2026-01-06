@@ -1,7 +1,7 @@
 import sys
 import joblib
 import matplotlib.pyplot as plt
-from script.data_preprocessing import load_data, preprocess_data_predict
+from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
 
 BASE_PATH = "data/raw_data/"
 

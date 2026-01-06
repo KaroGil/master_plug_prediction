@@ -37,7 +37,6 @@ def OCSVMClassifier(X: Optional[np.ndarray],
     return clf
 
 
-
 def train_anomaly_models(X: Optional[np.ndarray], y: Optional[np.ndarray]):
     ''' Train and return a dictionary of anomaly detection models. '''
 
