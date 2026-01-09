@@ -1,4 +1,3 @@
-import sys
 import joblib
 import matplotlib.pyplot as plt
 from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
@@ -21,7 +20,6 @@ for d in data_list:
 print("🔮 Loading model and making predictions...")
 model = joblib.load("models/best_model.joblib")
 print("Model used: " + type(model).__name__ + " with parameters: " + str(model.get_params()))
-
 
 print("🖨️ Making predictions on all datasets...")
 y_preds = []
@@ -48,9 +46,7 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
     plug_events = df[y_pred == 1]
     plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.') 
     plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  if pressure_col in df.columns else None
-    
-    # 
-
+     
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}")

@@ -21,14 +21,14 @@ print("Model used: " + type(model).__name__ + " with parameters: " + str(model.g
 predictions = model.predict(X)
 
 print("Visualizing predicted vs true values...")
-
 dv.visualize_predicted_vs_true(pd.concat([unscaled_X, y], axis=1), predictions, anomalies=True, model_name=type(model).__name__)
-dv.visualize_predicted_vs_true(pd.concat([unscaled_X, y], axis=1), predictions, model_name=type(model).__name__, plotLabel=False)
+#dv.visualize_predicted_vs_true(pd.concat([unscaled_X, y], axis=1), predictions, model_name=type(model).__name__, plotLabel=False)
 
 print("Unique predictions:")
 unique_vals, counts = np.unique(predictions, return_counts=True)
 for i in range(len(unique_vals)):
     print(f"{str(unique_vals[i])} : {counts[i]}")
+
 print(f"Total predictions: {len(predictions)}")
 print("Predictions:")
 print(predictions)

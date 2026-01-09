@@ -14,11 +14,18 @@ from . import window as w
 # Define paths
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-scaler_path = os.path.join(BASE_DIR, '..', '..', 'models', 'standard_scaler.pkl')
+MODELS_DIR = os.path.join(BASE_DIR, '..', '..', 'models')
+MODELS_DIR = os.path.abspath(MODELS_DIR)
+
+scaler_path = os.path.join(MODELS_DIR, 'standard_scaler.pkl')
 scaler_path = os.path.abspath(scaler_path)
 
-FEATURES_PATH = os.path.join(BASE_DIR, '..', '..', 'models', 'features_list.pkl')
+FEATURES_PATH = os.path.join(MODELS_DIR, 'features_list.pkl')
 FEATURES_PATH = os.path.abspath(FEATURES_PATH)
+
+shap_path = os.path.join(MODELS_DIR, 'shap_selected_mask.pkl')
+shap_path = os.path.abspath(shap_path)
+
 
 #### Functions for data preprocessing ###
 def read_unify_data(path="../data/raw_data/data1/*.csv"):
@@ -80,9 +87,6 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     # Sort by Time 
     df.set_index('Time', inplace=True)
     df.sort_index(inplace=True)
-
-    # Create Elapsed_seconds column to track time progression
-    #df['Elapsed_seconds'] = (df.index - df.index[0]).total_seconds()
 
     df.reset_index(drop=True, inplace=True)
 
@@ -147,7 +151,7 @@ def create_future_target(df, shift=-200):
     df.dropna(subset=['Plug_future'], inplace=True)
 
 
-def train_val_test_split(X,y,test_size=0.01):
+def split_data(X,y,test_size=0.01):
     '''Split data into train, validation, and test sets without shuffling'''
     n = len(X)
     test_start_idx = int((1 - test_size) * n)
@@ -156,24 +160,9 @@ def train_val_test_split(X,y,test_size=0.01):
     X_train = X.iloc[:val_start_idx]
     y_train = y.iloc[:val_start_idx]
 
-    # X_val = X.iloc[val_start_idx:test_start_idx]
-    # y_val = y.iloc[val_start_idx:test_start_idx]
-
     X_test = X.iloc[test_start_idx:]
     y_test = y.iloc[test_start_idx:]
 
-    return X_train, X_test, y_train, y_test
-
-
-def split_data(X, y):
-    '''Split data into features and target, then into train, val, test sets'''
-
-
-    print("y shape :", y.shape)
-
-    X_train, X_test, y_train, y_test = train_val_test_split(X, y)
-
-    print("y shape after split:", y_train.shape, y_test.shape)
     return X_train, X_test, y_train, y_test
 
 
@@ -209,22 +198,21 @@ def scale_features(X_train, X_test):
 
     return X_train, X_test
 
-
-def descale_features(df):
-    '''Inverse transform standardized features'''
+# def descale_features(df):
+#     '''Inverse transform standardized features'''
     
-    scaler = joblib.load(scaler_path)
+#     scaler = joblib.load(scaler_path)
 
-    df = df.copy()
+#     df = df.copy()
 
-    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+#     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+#     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
 
-    df[numeric_cols] = scaler.inverse_transform(df[numeric_cols])
+#     df[numeric_cols] = scaler.inverse_transform(df[numeric_cols])
 
-    print("⚙️ Features descaled using StandardScaler inverse transform")
+#     print("⚙️ Features descaled using StandardScaler inverse transform")
 
-    return df
+#     return df
 
 def reduce_features(X_train, X_val, X_test, features_to_remove):
     '''Remove specified features (columns) from datasets'''
@@ -293,8 +281,6 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     print("Reduced features:", X_train_reduced.shape[1])
 
     # save selected mask for later use
-    shap_path = os.path.join(BASE_DIR, '..', '..', 'models', 'shap_selected_mask.pkl')
-    shap_path = os.path.abspath(shap_path)
     joblib.dump(selected, shap_path)
 
     return X_train_reduced, selected
@@ -365,28 +351,26 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
             X = pd.concat([X, X_add], ignore_index=True)
             y = pd.concat([y, y_add], ignore_index=True)
 
-
-    # df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
-    # df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
-
-
     X_train, X_test, y_train, y_test = split_data(X, y) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
-
-    # X_train = fe.rolling_features(X_train)
-    # X_test = fe.rolling_features(X_test)
 
     X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
     X_test = remove_shap_low_importance_features(X_test, selected)
 
     X_train, to_drop = remove_correlated_features(X_train, threshold=0.9)
     X_test = X_test.drop(columns=to_drop)
-
+    
+    #drop any remaining NaN values
+    X_train.fillna(0,inplace=True)
+    X_test.fillna(0,inplace=True) 
+    y_train = y_train.loc[X_train.index]
+    y_test = y_test.loc[X_test.index]
 
     X_train, X_test = scale_features(X_train, X_test)
 
     X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
+
 
     data_to_save = {
         'X_train': X_train,
@@ -397,9 +381,7 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
 
     save_data(data_to_save, dataset_name, base_path="data/processed_data/")
 
-    FEATURES = X_train.columns.tolist()
-    
-    joblib.dump(FEATURES, FEATURES_PATH)
+    joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
     return X_train, X_test, y_train, y_test
 
@@ -413,21 +395,16 @@ def preprocess_data_predict(df):
     create_future_target(df)
 
     df_feat = df.select_dtypes(include=['number']).copy()
-    # df_feat = df_feat.drop(columns=['Plug', 'Plug_future', 'Anomaly'])
-    # df = fe.build_time_features(df, sensor_cols=df_feat.columns.tolist())
 
     X, y = w.prep_window(df, features=df_feat.columns.tolist())
 
-    #X = fe.rolling_features(X)
-    # Don´t need to remove shap low importance features here, as we will align to training features
     X = align_features(X, FEATURES)
 
     scalar = joblib.load(scaler_path)
+
     numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
     unscaled_X = X.copy()
     X[numeric_cols] = scalar.transform(X[numeric_cols])
-
-    print(X.columns)
 
     return X, y, unscaled_X
