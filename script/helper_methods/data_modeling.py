@@ -93,12 +93,17 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         y_train = y_train[y_train == 0]
 
     # Time-series 
-    tscv = TimeSeriesSplit(n_splits=3, test_size=500)
+    tscv = TimeSeriesSplit(n_splits=5, test_size=1000)
+
+    # Print class distribution in each fold to check splits TODO: remove later
+    for i, (_, te) in enumerate(tscv.split(X_train)):
+        y_te = y_train[te]
+        print(i, "test positives:", (y_te==1).sum(), "test size:", len(te))
 
     # Scoring metrics
     scoring = {
         "F1-score": "f1_weighted",
-        "F2-score": make_scorer(fbeta_score, beta=2, average='macro')
+        "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')
     }
 
     # Detect if model is XGBoost → wrap it
@@ -147,17 +152,10 @@ def get_models_and_params(data):
     if len(np.unique(data)) == 1:
         print("⚠️  Only one class present.")
         return (
-            {"Dummy": DummyClassifier(strategy="most_frequent"),
-             "Isolation Forest": IsolationForest(n_estimators=100, random_state=42, n_jobs=-1)
-             },
+            {"Dummy": DummyClassifier(strategy="most_frequent")},
             {"Dummy": {
                 "strategy": ["most_frequent", "stratified"]
-            },
-             "Isolation Forest": {
-                    'n_estimators': [100, 200],
-                    'max_samples': ['auto', 0.8],
-                    'contamination': [0.1, 0.2]
-             }}
+            }}
         )
     else:
         models = {
@@ -234,12 +232,10 @@ def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
 
     y_test_pred = model.predict(X_test)
-    if check_anomaly_model(model):
-        y_test_pred = np.where(y_test_pred == -1, 1, 0)
     print(y_test_pred)
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
-    print("F1 Score:", f1_score(y_test, y_test_pred, average='macro'))
+    print("F1 Score:", f1_score(y_test, y_test_pred, average='weighted'))
     return y_test_pred
 
 

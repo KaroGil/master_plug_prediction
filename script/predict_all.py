@@ -13,7 +13,7 @@ for i in range(1, 13):
 print("🛠️ Preprocessing datasets for prediction...")
 X_y_list = []
 for d in data_list:
-    X_y_list.append(preprocess_data_predict(d))
+    X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i}"))
 
 
 ### LOAD MODEL AND PREDICT ###

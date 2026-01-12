@@ -1,4 +1,3 @@
-import os
 from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
 import joblib
 import sys
@@ -13,7 +12,7 @@ print(f"Loading data from: {BASE_PATH + csv_file + '/*.csv'}")
 
 data = load_data(BASE_PATH + csv_file + '/*.csv')
 
-X, y, unscaled_X = preprocess_data_predict(data)
+X, y, unscaled_X = preprocess_data_predict(data, dataset_name=csv_file)
 
 model = joblib.load("models/best_model.joblib")
 print("Model used: " + type(model).__name__ + " with parameters: " + str(model.get_params()))

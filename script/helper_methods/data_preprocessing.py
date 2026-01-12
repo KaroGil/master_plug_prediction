@@ -68,6 +68,30 @@ def standardize_column_names(df):
     df = df.rename(columns=COLUMN_RENAME_MAP)
     return df
 
+def load_raw_data(path="../data/raw_data/data1/*.csv"):
+    '''Load and concatenate CSV files from a given path'''
+
+    files = sorted(glob.glob(path))
+    
+    df_list = [read_unify_data(f) for f in files]
+
+    df = pd.concat(df_list)
+
+    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
+
+    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
+
+    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
+
+    df.set_index('Time', inplace=True)
+    df.sort_index(inplace=True)
+
+    df = standardize_column_names(df)
+
+    # Drop any columns that are unnamed
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
+    return df
 
 def load_data(path="../data/raw_data/data1/*.csv"):
     '''Load and concatenate CSV files from a given path'''
@@ -151,17 +175,24 @@ def create_future_target(df, shift=-200):
     df.dropna(subset=['Plug_future'], inplace=True)
 
 
-def split_data(X,y,test_size=0.01):
+def split_data(X,y,test_size=0.01, test_logid=False):
     '''Split data into train, validation, and test sets without shuffling'''
-    n = len(X)
-    test_start_idx = int((1 - test_size) * n)
-    val_start_idx = int((1 - 2 * test_size) * n)
+    # instead of normal splitting, leave out one dataset #TODO remove the upper one.
+    if test_logid:
+        X_test = X.loc[X['LogId'] == X['LogId'].max()]
+        y_test = y.loc[y.index.isin(X_test.index)]
+        X_train = X.loc[X['LogId'] != X['LogId'].max()]
+        y_train = y.loc[y.index.isin(X_train.index)]
+    else:
+        n = len(X)
+        test_start_idx = int((1 - test_size) * n)
+        val_start_idx = int((1 - 2 * test_size) * n)
 
-    X_train = X.iloc[:val_start_idx]
-    y_train = y.iloc[:val_start_idx]
+        X_train = X.iloc[:val_start_idx]
+        y_train = y.iloc[:val_start_idx]
 
-    X_test = X.iloc[test_start_idx:]
-    y_test = y.iloc[test_start_idx:]
+        X_test = X.iloc[test_start_idx:]
+        y_test = y.iloc[test_start_idx:]
 
     return X_train, X_test, y_train, y_test
 
@@ -185,6 +216,9 @@ def scale_features(X_train, X_test):
     X_train, X_test = X_train.copy(), X_test.copy()
 
     numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
+    print("DEBUG: numeric columns before filtering:", numeric_cols)
+    if 'LogId' in numeric_cols:
+        print("LOGID FOUND IN NUMERIC COLUMNS, HOOOOOOOOOOOW")
     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
 
     scaler = StandardScaler()
@@ -198,21 +232,6 @@ def scale_features(X_train, X_test):
 
     return X_train, X_test
 
-# def descale_features(df):
-#     '''Inverse transform standardized features'''
-    
-#     scaler = joblib.load(scaler_path)
-
-#     df = df.copy()
-
-#     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-#     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
-
-#     df[numeric_cols] = scaler.inverse_transform(df[numeric_cols])
-
-#     print("⚙️ Features descaled using StandardScaler inverse transform")
-
-#     return df
 
 def reduce_features(X_train, X_val, X_test, features_to_remove):
     '''Remove specified features (columns) from datasets'''
@@ -271,7 +290,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
         selected = np.zeros_like(importance, dtype=bool)
         selected[idx] = True
 
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly']
+    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId']
     always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
     selected[always_keep_idx] = True
 
@@ -325,8 +344,16 @@ def align_features(df, FEATURES):
 
     return df
 
-def prep(df):
+def add_logId_column(df, log_id):
+    '''Add a LogId column to the dataframe to specify which log the data comes from'''
+    df = df.copy()
+    df['LogId'] = int(log_id[4:])
+    return df
+
+def prep(df, log_id):
     '''Basic preprocessing pipeline without train/test split'''
+    df = add_logId_column(df, log_id)
+
     create_target_column(df) # Makes plug = 1/0 column, based on flow/pressure threshold
     create_future_target(df) # Creates Plug_future column by shifting Plug column by -200 ( since sampling rate is 20Hz, this is 10 seconds ahead)
 
@@ -334,24 +361,24 @@ def prep(df):
 
     df_feat = df.select_dtypes(include=['number']).copy()
 
-    X, y = w.prep_window(df, features=df_feat.columns.tolist())
+    X, y = w.prep_window(df, [x for x in df_feat.columns.tolist() if x not in ['Plug', 'Plug_future', 'LogId']])
 
     return X, y
 
 def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None):
     '''Full preprocessing pipeline for model selection and training'''
 
-    X, y = prep(df)
-
+    X, y = prep(df, dataset_name)
+    print(f"Initial Columns: {X.columns.tolist()}")
     if additional_data is not None and additional_data_name is not None:
         for add_df, add_name in zip(additional_data, additional_data_name):
-            print(f"Processing additional data: {add_name}") #TODO: make this into a function since you reuse it for every dataset before merger
-            X_add, y_add = prep(add_df)
+            print(f"Processing additional data: {add_name}") 
+            X_add, y_add = prep(add_df, add_name)
 
             X = pd.concat([X, X_add], ignore_index=True)
             y = pd.concat([y, y_add], ignore_index=True)
 
-    X_train, X_test, y_train, y_test = split_data(X, y) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
+    X_train, X_test, y_train, y_test = split_data(X, y, test_logid=True) # Splits data into X and y, then into train/test sets. Removes Plug and Plug_future from X
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
 
@@ -366,6 +393,8 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     X_test.fillna(0,inplace=True) 
     y_train = y_train.loc[X_train.index]
     y_test = y_test.loc[X_test.index]
+
+    print(X_train.dtypes)
 
     X_train, X_test = scale_features(X_train, X_test)
 
@@ -386,25 +415,29 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     return X_train, X_test, y_train, y_test
 
 
-def preprocess_data_predict(df):
+def preprocess_data_predict(df, dataset_name):
     '''Full preprocessing pipeline for prediction'''
 
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
+    df = add_logId_column(df, dataset_name)
     create_target_column(df)
     create_future_target(df)
 
     df_feat = df.select_dtypes(include=['number']).copy()
 
-    X, y = w.prep_window(df, features=df_feat.columns.tolist())
+    X, y = w.prep_window(df, features=[x for x in df_feat.columns.tolist() if x not in ['Plug', 'Plug_future', 'LogId']])
 
     X = align_features(X, FEATURES)
 
     scalar = joblib.load(scaler_path)
+    print("columns before numeric (0):", X['LogId'])
 
     numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
     numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
     unscaled_X = X.copy()
     X[numeric_cols] = scalar.transform(X[numeric_cols])
+
+    print("columns after numeric (1):", X['LogId'])
 
     return X, y, unscaled_X

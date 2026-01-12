@@ -48,6 +48,10 @@ def visualize_flow_rate(data, name=None):
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Flow rate & Pump outlet pressure over time for {name}" if name else "Flow rate & Pump outlet pressure over time")
+    if name == "Labled Dataset":
+        import matplotlib.dates as mdates
+        plt.xlabel("Timestamp")
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
     plt.legend()
     plt.show()
 
@@ -72,7 +76,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, anomalies=False, name=None):
+def visualize_plug_event(data, plug_column="Plug", anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -82,9 +86,9 @@ def visualize_plug_event(data, anomalies=False, name=None):
     plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
 
     # Highlight Plug=1 events
-    plug_events = data[data["Plug"] == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label="Plug=1 (Flow)", zorder=5)
-    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label="Plug=1 (Pressure)", zorder=5)
+    plug_events = data[data[plug_column] == 1]
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
+    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label=f"{plug_column}=1 (Pressure)", zorder=5)
 
     # Highlight anomalies
     if anomalies and "Anomaly" in data.columns:
@@ -95,6 +99,12 @@ def visualize_plug_event(data, anomalies=False, name=None):
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
+
+    if name == "Labled Dataset":
+        import matplotlib.dates as mdates
+        plt.xlabel("Timestamp")
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        
     plt.legend()
     plt.show()
 
