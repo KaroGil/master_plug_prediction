@@ -31,6 +31,28 @@ def augment_minority_continuous_timeseries(X_train, y_train, n_augmentations=3):
     return X_balanced, y_balanced
 
 
+###  tidsderiventen (d/dt) + andre ordre (d2/dt2) TODO: test this out
+def add_time_derivative_features(df, time_col="Time"):
+    """
+    Add first and second time derivative features for all numeric columns in the DataFrame.
+    Assumes 'time_col' is in datetime format (e.g., '1900-01-01 11:07:40.450') and sorted.
+    """
+    df[time_col] = pd.to_datetime(df[time_col])
+    time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  # Fill NaN for first row
+
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+
+    for col in numeric_cols:
+        first_derivative = df[col].diff() / time_diffs
+        second_derivative = first_derivative.diff() / time_diffs
+
+        df[f"{col}_d1"] = first_derivative.fillna(0)
+        df[f"{col}_d2"] = second_derivative.fillna(0)
+
+    return df
+
+
+
 ### PHYSICS BASED FEATURES ###
 
 def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="TS outlet pressure (Mean)"):

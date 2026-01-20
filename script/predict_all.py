@@ -1,18 +1,21 @@
 import joblib
+import pandas as pd
 import matplotlib.pyplot as plt
 from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
 
-BASE_PATH = "data/raw_data/"
+BASE_PATH = "data/labeled/labeled_"
 
 print("💾 Loading multiple datasets for prediction...")
 data_list = []
 for i in range(1, 13):
-    data_list.append(load_data(BASE_PATH + f"data{i}/*.csv"))
-
+    if i in [2]:
+        # Skip dataset 2 as it is huge
+        continue
+    data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
 
 print("🛠️ Preprocessing datasets for prediction...")
 X_y_list = []
-for d in data_list:
+for i, d in enumerate(data_list, 1):
     X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i}"))
 
 
@@ -49,7 +52,7 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
      
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
-    plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}")
+    plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}" if figureNum not in [1,3,4,7,9,11] else f"Predicted vs True Plug=1 Events for data nr {figureNum} [used for training]")
     plt.legend()
 
 

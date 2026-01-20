@@ -104,7 +104,7 @@ def visualize_plug_event(data, plug_column="Plug", anomalies=False, name=None):
         import matplotlib.dates as mdates
         plt.xlabel("Timestamp")
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        
+
     plt.legend()
     plt.show()
 
@@ -129,7 +129,7 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
 
     # Highlight true Plug_future=1 events
     if plotLabel:
-        plug_events = df[df["Plug_future"] == 1] if "Plug_future" in df.columns else df[df["Plug_future_std"] == 1]
+        plug_events = df[df["Plug_future"] == 1]
         plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5) 
         plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5) if pressure_col in df.columns else None
         
