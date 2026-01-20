@@ -3,6 +3,8 @@ data/raw_data/*
 
 data/processed_data/*
 
+data/labeled/labeled_data2
+
 
 # Ignore VSCode settings and Python cache files
 .vscode/*
