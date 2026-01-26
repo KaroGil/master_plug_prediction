@@ -112,8 +112,6 @@ def visualize_plug_event(data, plug_column="Plug", anomalies=False, name=None):
 def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, plotLabel=True):
     plt.figure(figsize=(12,6))
 
-    print("DEBUG: df columns:", df.columns)
-
     flow_col = "Flow rate (Mean)"
     pressure_col = "Pump outlet pressure (Mean)"
 

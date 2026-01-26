@@ -8,9 +8,6 @@ BASE_PATH = "data/labeled/labeled_"
 print("💾 Loading multiple datasets for prediction...")
 data_list = []
 for i in range(1, 13):
-    if i in [2]:
-        # Skip dataset 2 as it is huge
-        continue
     data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
 
 print("🛠️ Preprocessing datasets for prediction...")

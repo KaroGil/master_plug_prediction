@@ -20,5 +20,4 @@ data11 = pd.read_csv(LABLED_PATH + "data11.csv")
 
 X_train, X_test, y_train, y_test = preprocess_data(data, csv_file, additional_data=[data5, data4, data7, data9, data11], additional_data_name=["data5", "data4", "data7", "data9", "data11"])
 
-print("Final training columns:", X_train.columns)
 model_data(X_train, y_train, X_test, y_test)

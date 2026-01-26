@@ -41,10 +41,11 @@ def add_time_derivative_features(df, time_col="Time"):
     time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  # Fill NaN for first row
 
     numeric_cols = df.select_dtypes(include=[np.number]).columns
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug_future', 'Plug', 'Anomaly']]  # Exclude target columns
 
     for col in numeric_cols:
-        first_derivative = df[col].diff() / time_diffs
-        second_derivative = first_derivative.diff() / time_diffs
+        first_derivative = (df[col].diff() / time_diffs).replace([np.inf, -np.inf], np.nan)
+        second_derivative = (first_derivative.diff() / time_diffs).replace([np.inf, -np.inf], np.nan)
 
         df[f"{col}_d1"] = first_derivative.fillna(0)
         df[f"{col}_d2"] = second_derivative.fillna(0)
@@ -102,9 +103,9 @@ def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_c
 
 ## Flow-pressure interaction feature
 
-def hydraulic_conductance_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
+def hydraulic_conductance_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"): #TODO
     """
-    Calculate hydraulic conductance as a feature.
+    Calculate hydraulic conductance as a feature. 
     C = Q / ΔP
     where Q is flow rate and ΔP is pressure drop.
     """
@@ -113,13 +114,12 @@ def hydraulic_conductance_feature(df, flow_col="Flow rate (Mean)", ts_pressure_c
     return df
 
 
-def flow_sensitivity_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"):
+def flow_sensitivity_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
     """
     Calculate flow sensitivity to inlet pressure as a feature.
     Sensitivity = dQ / dP_pump
     """
-    df["Flow_Sensitivity"] = df[flow_col].diff() / (df[pump_col].diff() + 1e-6)  
-
+    df["Flow_Sensitivity"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
     return df
 
 ### Temperature-based derived features
