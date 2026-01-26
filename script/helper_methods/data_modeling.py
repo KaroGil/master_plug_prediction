@@ -87,11 +87,6 @@ class XGBEarlyStoppingWrapper(BaseEstimator):
 def tune_random_search(model, X_train, y_train, params, n_iter=40):
     '''Perform Randomized Search with Time Series CV + early stopping (XGB only)'''
 
-    # Handle anomaly model logic from your original code
-    if check_anomaly_model(model):
-        X_train = X_train[y_train == 0]
-        y_train = y_train[y_train == 0]
-
     # Time-series 
     tscv = TimeSeriesSplit(n_splits=5, test_size=1000)
 
@@ -152,14 +147,14 @@ def get_models_and_params(data):
     if len(np.unique(data)) == 1:
         print("⚠️  Only one class present.")
         return (
-            {"Dummy": DummyClassifier(strategy="most_frequent")},
+            {"Dummy": DummyClassifier()},
             {"Dummy": {
                 "strategy": ["most_frequent", "stratified"]
             }}
         )
     else:
         models = {
-            "Dummy (baseline)": DummyClassifier(strategy="most_frequent"),
+            "Dummy (baseline)": DummyClassifier(),
             "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight=sum(data == 0) / sum(data == 1)),
         }
