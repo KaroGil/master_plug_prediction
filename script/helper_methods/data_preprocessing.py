@@ -216,10 +216,7 @@ def scale_features(X_train, X_test):
     X_train, X_test = X_train.copy(), X_test.copy()
 
     numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
-    print("DEBUG: numeric columns before filtering:", numeric_cols)
-    if 'LogId' in numeric_cols:
-        print("LOGID FOUND IN NUMERIC COLUMNS, HOOOOOOOOOOOW")
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly', 'LogId']]
 
     scaler = StandardScaler()
     X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
@@ -247,11 +244,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     ''' 
     Calculate SHAP feature importance for the given model and training data, and
     remove features with low importance. 
-    '''
-
-    print("DEBUG: X_train shape entering SHAP:", X_train.shape)
-    print("DEBUG: first 5 columns:", list(X_train.columns[:5]))
-    
+    '''    
 
     baseline = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     baseline.fit(X_train, y_train)
@@ -354,8 +347,8 @@ def prep(df, log_id):
     '''Basic preprocessing pipeline without train/test split'''
     df = add_logId_column(df, log_id)
 
-    create_target_column(df) # Makes plug = 1/0 column, based on flow/pressure threshold
-    create_future_target(df) # Creates Plug_future column by shifting Plug column by -200 ( since sampling rate is 20Hz, this is 10 seconds ahead)
+    print("Adding time derivative features...")
+    df = fe.add_time_derivative_features(df)
 
     df = fe.feature_engineering_pipeline(df) 
 
@@ -365,11 +358,10 @@ def prep(df, log_id):
 
     return X, y
 
-def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None):
+def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
 
     X, y = prep(df, dataset_name)
-    print(f"Initial Columns: {X.columns.tolist()}")
     if additional_data is not None and additional_data_name is not None:
         for add_df, add_name in zip(additional_data, additional_data_name):
             print(f"Processing additional data: {add_name}") 
@@ -394,21 +386,18 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     y_train = y_train.loc[X_train.index]
     y_test = y_test.loc[X_test.index]
 
-    print(X_train.dtypes)
-
     X_train, X_test = scale_features(X_train, X_test)
 
-    X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
-
-
+    print("Visualizing data after augmentation...")
+    
     data_to_save = {
         'X_train': X_train,
         'X_test': X_test,
         'y_train': y_train,
         'y_test': y_test
     }
-
-    save_data(data_to_save, dataset_name, base_path="data/processed_data/")
+    basePath = BASE_PATH + "data/processed_data/"
+    save_data(data_to_save, dataset_name, base_path=basePath)
 
     joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
@@ -420,24 +409,15 @@ def preprocess_data_predict(df, dataset_name):
 
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
-    df = add_logId_column(df, dataset_name)
-    create_target_column(df)
-    create_future_target(df)
-
-    df_feat = df.select_dtypes(include=['number']).copy()
-
-    X, y = w.prep_window(df, features=[x for x in df_feat.columns.tolist() if x not in ['Plug', 'Plug_future', 'LogId']])
+    X, y = prep(df, dataset_name)
 
     X = align_features(X, FEATURES)
 
     scalar = joblib.load(scaler_path)
-    print("columns before numeric (0):", X['LogId'])
 
     numeric_cols = X.select_dtypes(include=['number']).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly']]
+    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly', 'LogId']]
     unscaled_X = X.copy()
     X[numeric_cols] = scalar.transform(X[numeric_cols])
-
-    print("columns after numeric (1):", X['LogId'])
 
     return X, y, unscaled_X
