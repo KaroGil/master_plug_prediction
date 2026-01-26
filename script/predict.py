@@ -5,12 +5,12 @@ import numpy as np
 import pandas as pd
 from script.helper_methods import data_visualization as dv
 
-BASE_PATH = "data/raw_data/"
+BASE_PATH = "data/labeled/labeled_"
 
 csv_file = "data1" if len(sys.argv) < 2 else sys.argv[1]
 print(f"Loading data from: {BASE_PATH + csv_file + '/*.csv'}")
 
-data = load_data(BASE_PATH + csv_file + '/*.csv')
+data = pd.read_csv(BASE_PATH + csv_file + '.csv')
 
 X, y, unscaled_X = preprocess_data_predict(data, dataset_name=csv_file)
 
@@ -20,8 +20,9 @@ print("Model used: " + type(model).__name__ + " with parameters: " + str(model.g
 predictions = model.predict(X)
 
 print("Visualizing predicted vs true values...")
-dv.visualize_predicted_vs_true(pd.concat([unscaled_X, y], axis=1), predictions, anomalies=True, model_name=type(model).__name__)
-#dv.visualize_predicted_vs_true(pd.concat([unscaled_X, y], axis=1), predictions, model_name=type(model).__name__, plotLabel=False)
+unscaled_X["Plug_future"] = y
+dv.visualize_predicted_vs_true(unscaled_X, predictions, anomalies=True, model_name=type(model).__name__)
+#dv.visualize_predicted_vs_true(unscaled_X, predictions, model_name=type(model).__name__, plotLabel=False)
 
 print("Unique predictions:")
 unique_vals, counts = np.unique(predictions, return_counts=True)
