@@ -8,12 +8,14 @@ BASE_PATH = "data/labeled/labeled_"
 print("💾 Loading multiple datasets for prediction...")
 data_list = []
 for i in range(1, 13):
+    if i == 2:
+        continue  # Skip data2
     data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
 
 print("🛠️ Preprocessing datasets for prediction...")
 X_y_list = []
 for i, d in enumerate(data_list, 1):
-    X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i}"))
+    X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i + 1 if i >= 2 else 1}"))
 
 
 ### LOAD MODEL AND PREDICT ###
@@ -56,7 +58,7 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
 plt.figure(figsize=(12,6))
 
 for X_y_u, y_pred, i in zip(X_y_list, y_preds, range(1,len(X_y_list)+1)):
-    plot_one(X_y_u[2], y_pred, i, X_y_u[1])
+    plot_one(X_y_u[2], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
 
 plt.subplots_adjust(hspace=0.5)
 plt.show()

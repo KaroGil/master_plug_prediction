@@ -244,11 +244,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     ''' 
     Calculate SHAP feature importance for the given model and training data, and
     remove features with low importance. 
-    '''
-
-    print("DEBUG: X_train shape entering SHAP:", X_train.shape)
-    print("DEBUG: first 5 columns:", list(X_train.columns[:5]))
-    
+    '''    
 
     baseline = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
     baseline.fit(X_train, y_train)
@@ -351,14 +347,10 @@ def prep(df, log_id):
     '''Basic preprocessing pipeline without train/test split'''
     df = add_logId_column(df, log_id)
 
-    report_nonfinite(df, "raw df")
     print("Adding time derivative features...")
     df = fe.add_time_derivative_features(df)
-    report_nonfinite(df, "time derivative features df")
 
-    print("Adding physics features...")
     df = fe.feature_engineering_pipeline(df) 
-    report_nonfinite(df, "physics features df")
 
     df_feat = df.select_dtypes(include=['number']).copy()
 
@@ -396,14 +388,7 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
 
     X_train, X_test = scale_features(X_train, X_test)
 
-    import script.helper_methods.data_visualization as dv
-    print("Visualizing data before augmentation...")
-    dv.visualize_flow_rate(X_train, name="Training Data - Before Augmentation")
-
-    X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
-    
     print("Visualizing data after augmentation...")
-    dv.visualize_flow_rate(X_train, name="Training Data - After Augmentation")
     
     data_to_save = {
         'X_train': X_train,
@@ -417,30 +402,6 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
     return X_train, X_test, y_train, y_test
-
-
-def report_nonfinite(df, name="df"):
-    num = df.select_dtypes(include="number")
-    bad = ~np.isfinite(num.to_numpy())
-    if not bad.any():
-        print(f"[{name}] ✅ all numeric values are finite")
-        return None
-
-    bad_cols = num.columns[bad.any(axis=0)]
-    bad_rows = num.index[bad.any(axis=1)]
-
-    print(f"[{name}] ❌ non-finite found")
-    print("  columns:", list(bad_cols))
-    print("  rows:", len(bad_rows))
-
-    # counts per column
-    counts = (~np.isfinite(num[bad_cols])).sum().sort_values(ascending=False)
-    print("\n  counts per column:\n", counts)
-
-    # show a small sample of offending cells
-    sample = num.loc[bad_rows, bad_cols].head(20)
-    print("\n  sample rows:\n", sample)
-    return bad_rows, bad_cols
 
 
 def preprocess_data_predict(df, dataset_name):

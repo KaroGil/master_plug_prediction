@@ -42,8 +42,7 @@ def visualize_flow_rate(data, name=None):
     '''Visualize flow rate and pump outlet pressure over time'''
 
     plt.figure(figsize=(12,6))
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate")
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure")
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)_mean"], label="Flow rate")
 
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
