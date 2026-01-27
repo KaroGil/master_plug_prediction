@@ -1,18 +1,16 @@
 # File extension imports
-import glob
-import shap
+import os
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
 
-from . import feature_engineering as fe
 from . import window as w
-
+from . import data_loader as dl
+from . import feature_reduction as fr
+from . import feature_engineering as fe
 
 # Define paths
-import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, '..', '..', 'models')
 MODELS_DIR = os.path.abspath(MODELS_DIR)
@@ -23,115 +21,6 @@ scaler_path = os.path.abspath(scaler_path)
 FEATURES_PATH = os.path.join(MODELS_DIR, 'features_list.pkl')
 FEATURES_PATH = os.path.abspath(FEATURES_PATH)
 
-shap_path = os.path.join(MODELS_DIR, 'shap_selected_mask.pkl')
-shap_path = os.path.abspath(shap_path)
-
-
-#### Functions for data preprocessing ###
-def read_unify_data(path="../data/raw_data/data1/*.csv"):
-    '''Read a CSV file with unified separator and decimal'''
-
-    with open(path, 'r') as file:
-        heaeder_line = file.readline()
-
-    sep = ';' if ';' in heaeder_line else ','
-
-    decimal = '.'
-
-    with open(path, 'r') as file:
-        for _ in range(5):
-            line = file.readline()
-            if ',' in line and sep == ';':
-                decimal = ','
-                break
-            if '.' in line and sep == ',':
-                decimal = '.'
-                break
-    
-    return pd.read_csv(path, sep=sep, decimal=decimal)
-
-
-COLUMN_RENAME_MAP = {
-    "Time": "Time",
-    "Flow rate (Arith. Mean)": "Flow rate (Mean)",
-    "Pressure before pump (Arith. Mean)": "TS inlet pressure (Mean)",
-    "Pressure before pump (Arith. Mean)": "TS outlet pressure (Mean)",
-    "Pressure after pump (Arith. Mean)": "Pump outlet pressure (Mean)",
-    "Temperature TS inlet (Arith. Mean)": "Temperature TS inlet (Mean)",
-    "Temperature TS outlet (Arith. Mean)": "Temperature TS outlet (Mean)",
-    "Tank temperature (Arith. Mean)": "Tank temperature (Mean)",
-    "Bypass temperature (Arith. Mean)": "Bypass temperature (Mean)",
-    "Differential pressure (Arith. Mean)": "Differential pressure (Mean)",
-}
-
-def standardize_column_names(df):
-    df = df.rename(columns=COLUMN_RENAME_MAP)
-    return df
-
-def load_raw_data(path="../data/raw_data/data1/*.csv"):
-    '''Load and concatenate CSV files from a given path'''
-
-    files = sorted(glob.glob(path))
-    
-    df_list = [read_unify_data(f) for f in files]
-
-    df = pd.concat(df_list)
-
-    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
-
-    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
-
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
-
-    df.set_index('Time', inplace=True)
-    df.sort_index(inplace=True)
-
-    df = standardize_column_names(df)
-
-    # Drop any columns that are unnamed
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-
-    return df
-
-def load_data(path="../data/raw_data/data1/*.csv"):
-    '''Load and concatenate CSV files from a given path'''
-
-    files = sorted(glob.glob(path))
-    
-    df_list = [read_unify_data(f) for f in files]
-
-    df = pd.concat(df_list)
-
-    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
-
-    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
-
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
-    
-    # Sort by Time 
-    df.set_index('Time', inplace=True)
-    df.sort_index(inplace=True)
-
-    df.reset_index(drop=True, inplace=True)
-
-    df = standardize_column_names(df)
-
-    # Drop any columns that are unnamed
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-
-    return df
-
-
-def load_split_data(data: list, dataset_name: str, base_path="../data/processed_data/"):
-    '''Load datasets to CSV files'''
-    loaded_data = {}
-
-    for key in data:
-        loaded_data[key] = pd.read_csv(f"{base_path}{dataset_name}_{key}.csv", index_col=0)
-    print(f"Load data with base name: {dataset_name}")
-
-    return loaded_data
-    
 
 def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['flow'], mask=300):
     ''' Make the target column based on tresholds '''
@@ -175,10 +64,16 @@ def create_future_target(df, shift=-200):
     df.dropna(subset=['Plug_future'], inplace=True)
 
 
+def add_logId_column(df, log_id):
+    '''Add a LogId column to the dataframe to specify which log the data comes from'''
+    df = df.copy()
+    df['LogId'] = int(log_id[4:])
+    return df
+
+
 def split_data(X,y,test_size=0.01, test_logid=False):
     '''Split data into train, validation, and test sets without shuffling'''
-    # instead of normal splitting, leave out one dataset #TODO remove the upper one.
-    if test_logid:
+    if test_logid: # instead of normal splitting, leave out one dataset
         X_test = X.loc[X['LogId'] == X['LogId'].max()]
         y_test = y.loc[y.index.isin(X_test.index)]
         X_train = X.loc[X['LogId'] != X['LogId'].max()]
@@ -230,104 +125,6 @@ def scale_features(X_train, X_test):
     return X_train, X_test
 
 
-def reduce_features(X_train, X_val, X_test, features_to_remove):
-    '''Remove specified features (columns) from datasets'''
-
-    X_train_reduced = X_train.drop(columns=features_to_remove)
-    X_val_reduced = X_val.drop(columns=features_to_remove)
-    X_test_reduced = X_test.drop(columns=features_to_remove)
-
-    return X_train_reduced, X_val_reduced, X_test_reduced
-
-
-def shap_feature_importance(X_train, y_train, shap_subset_size=100):
-    ''' 
-    Calculate SHAP feature importance for the given model and training data, and
-    remove features with low importance. 
-    '''    
-
-    baseline = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    baseline.fit(X_train, y_train)
-    print("🛠️ Baseline model trained.")
-
-    shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
-    print("SHAP calculation indices:", shap_idx)
-    X_shap = X_train.iloc[shap_idx]
-    print("Calculating SHAP values on subset of size:", X_shap.shape)
-
-    explainer = shap.TreeExplainer(baseline)
-
-    raw_shap = explainer.shap_values(X_shap, check_additivity=False)
-
-    if isinstance(raw_shap, list):
-        # Classic SHAP shape: list[class] → (n_samples, n_features)
-        shap_values = raw_shap[1]
-    else:
-        # SHAP sometimes returns (n_samples, n_features, 2)
-        if raw_shap.ndim == 3:
-            shap_values = raw_shap[..., 1]   # take only class-1 contributions
-        else:
-            shap_values = raw_shap
-
-    importance = np.mean(np.abs(shap_values), axis=0)  
-
-    print("SHAP importance shape:", importance.shape)
-    print("Top 10 important features:", list(X_train.columns[np.argsort(importance)[-10:]]))
-
-    threshold = np.percentile(importance, 30)         
-    selected = importance > threshold    
-
-    if selected.sum() == 0:
-        print("Warning: No features selected based on SHAP importance. Keeping top 10 features.")            
-        idx = np.argsort(importance)[-10:]
-        selected = np.zeros_like(importance, dtype=bool)
-        selected[idx] = True
-
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId']
-    always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
-    selected[always_keep_idx] = True
-
-    X_train_reduced = X_train.loc[:, selected]
-
-    print("Original features:", X_train.shape[1])
-    print("Reduced features:", X_train_reduced.shape[1])
-
-    # save selected mask for later use
-    joblib.dump(selected, shap_path)
-
-    return X_train_reduced, selected
-
-
-def remove_shap_low_importance_features(X, selected):
-    '''Remove low importance features based on SHAP selection mask'''
-
-    return X.loc[:, selected]
-
-
-def remove_correlated_features(X, threshold=0.9):
-    '''Remove highly correlated features based on a correlation threshold'''
-
-    corr_matrix = X.corr().abs()
-    upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-
-    print("Correlation matrix:", corr_matrix)
-
-    to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
-
-    X_reduced = X.drop(columns=to_drop)
-
-    print(f"⚙️ Removed {len(to_drop)} correlated features with threshold > {threshold}")
-    print("Remaining features:", X_reduced.shape[1])
-
-    return X_reduced, to_drop
-
-def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
-    '''Save datasets to CSV files'''
-    for key, df in data.items():
-        df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
-    print(f"💾 Saved data with base name: {dataset_name}")
-
-
 def align_features(df, FEATURES):
     for col in FEATURES:
         if col not in df.columns:
@@ -337,13 +134,8 @@ def align_features(df, FEATURES):
 
     return df
 
-def add_logId_column(df, log_id):
-    '''Add a LogId column to the dataframe to specify which log the data comes from'''
-    df = df.copy()
-    df['LogId'] = int(log_id[4:])
-    return df
 
-def prep(df, log_id):
+def feature_engineering_windowing(df, log_id):
     '''Basic preprocessing pipeline without train/test split'''
     df = add_logId_column(df, log_id)
 
@@ -361,12 +153,11 @@ def prep(df, log_id):
 def preprocess_data(df, dataset_name, additional_data = None, additional_data_name = None, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
 
-    X, y = prep(df, dataset_name)
+    X, y = feature_engineering_windowing(df, dataset_name)
     if additional_data is not None and additional_data_name is not None:
         for add_df, add_name in zip(additional_data, additional_data_name):
             print(f"Processing additional data: {add_name}") 
-            X_add, y_add = prep(add_df, add_name)
-
+            X_add, y_add = feature_engineering_windowing(add_df, add_name)
             X = pd.concat([X, X_add], ignore_index=True)
             y = pd.concat([y, y_add], ignore_index=True)
 
@@ -374,10 +165,10 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
 
-    X_train, selected = shap_feature_importance(X_train, y_train, shap_subset_size=50)
-    X_test = remove_shap_low_importance_features(X_test, selected)
+    X_train, selected = fr.shap_feature_importance(X_train, y_train, shap_subset_size=50)
+    X_test = fr.remove_shap_low_importance_features(X_test, selected)
 
-    X_train, to_drop = remove_correlated_features(X_train, threshold=0.9)
+    X_train, to_drop = fr.remove_correlated_features(X_train, threshold=0.9)
     X_test = X_test.drop(columns=to_drop)
     
     #drop any remaining NaN values
@@ -388,7 +179,7 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
 
     X_train, X_test = scale_features(X_train, X_test)
 
-    print("Visualizing data after augmentation...")
+    X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
     
     data_to_save = {
         'X_train': X_train,
@@ -397,7 +188,7 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
         'y_test': y_test
     }
     basePath = BASE_PATH + "data/processed_data/"
-    save_data(data_to_save, dataset_name, base_path=basePath)
+    dl.save_data(data_to_save, dataset_name, base_path=basePath)
 
     joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
@@ -409,7 +200,7 @@ def preprocess_data_predict(df, dataset_name):
 
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
 
-    X, y = prep(df, dataset_name)
+    X, y = feature_engineering_windowing(df, dataset_name)
 
     X = align_features(X, FEATURES)
 

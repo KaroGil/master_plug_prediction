@@ -1,7 +1,7 @@
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
-from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
+from script.helper_methods.data_preprocessing import preprocess_data_predict
 
 BASE_PATH = "data/labeled/labeled_"
 
