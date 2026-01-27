@@ -1,4 +1,4 @@
-from script.helper_methods.data_preprocessing import load_data, preprocess_data_predict
+from script.helper_methods.data_preprocessing import preprocess_data_predict
 import joblib
 import sys
 import numpy as np

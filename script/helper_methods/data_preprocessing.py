@@ -179,7 +179,15 @@ def preprocess_data(df, dataset_name, additional_data = None, additional_data_na
 
     X_train, X_test = scale_features(X_train, X_test)
 
+    print("Visualizing before augmentation")
+    from . import data_visualization as dv
+    all = X_train.copy()
+    all['Plug_future'] = y_train
+    dv.visualize_plug_event(all, name="Training Set Before Augmentation")
     X_train, y_train = fe.augment_minority_continuous_timeseries(X_train, y_train)
+    all_after = X_train.copy()
+    all_after['Plug_future'] = y_train
+    dv.visualize_plug_event(all_after, name="Training Set After Augmentation")
     
     data_to_save = {
         'X_train': X_train,
