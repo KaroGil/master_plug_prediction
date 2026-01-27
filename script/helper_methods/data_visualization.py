@@ -75,25 +75,22 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column="Plug", anomalies=False, name=None):
+def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
-
+    print("COlumns in data:", data.columns)
     plt.figure(figsize=(12,6))
 
     # Plot all data
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)_mean"], label="Flow rate", alpha=0.5)
 
     # Highlight Plug=1 events
     plug_events = data[data[plug_column] == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
-    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label=f"{plug_column}=1 (Pressure)", zorder=5)
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)_mean"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
 
     # Highlight anomalies
     if anomalies and "Anomaly" in data.columns:
         anomaly_events = data[data["Anomaly"] == 1]
-        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
-        plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
+        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)_mean"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
 
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
