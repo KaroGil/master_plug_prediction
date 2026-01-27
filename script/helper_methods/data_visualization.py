@@ -1,8 +1,8 @@
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 from sklearn.calibration import calibration_curve
+from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 
 
 def plot_feature_histograms(data, name=None):
@@ -274,37 +274,3 @@ def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     plt.tight_layout()
     plt.show()
 
-
-def plot_anomaly_score_distribution(model, data):
-    '''Plot distribution of anomaly scores'''
-
-    scores = -model.score_samples(data)
-    plt.hist(scores, bins=50)
-    plt.title(f"{type(model).__name__} anomaly score distribution")
-    plt.xlabel("Score")
-    plt.ylabel("Count")
-    plt.show()
-
-
-def feature_importnace_anomaly(model):
-    '''Plot feature importance for model'''
-
-    importances = np.array([tree.feature_importances_ for tree in model.estimators_])
-
-    importances = importances.mean(axis=0)
-
-    plt.bar(range(len(importances)), importances)
-    plt.title(f"{type(model).__name__} Feature Importance")
-    plt.xlabel("Feature index")
-    plt.ylabel("Importance")
-    plt.show()
-
-
-def plot_anomaly_distribution(preds, model_name):
-    unique, counts = np.unique(preds, return_counts=True)
-    plt.bar(unique, counts)
-    plt.xticks(unique, ['Normal', 'Anomaly'])
-    plt.title(f"Anomaly Distribution for {model_name}")
-    plt.xlabel("Class")
-    plt.ylabel("Count")
-    plt.show()
