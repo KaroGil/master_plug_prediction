@@ -22,7 +22,6 @@ predictions = model.predict(X)
 print("Visualizing predicted vs true values...")
 unscaled_X["Plug_future"] = y
 dv.visualize_predicted_vs_true(unscaled_X, predictions, anomalies=True, model_name=type(model).__name__)
-#dv.visualize_predicted_vs_true(unscaled_X, predictions, model_name=type(model).__name__, plotLabel=False)
 
 print("Unique predictions:")
 unique_vals, counts = np.unique(predictions, return_counts=True)

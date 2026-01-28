@@ -2,33 +2,38 @@ import pandas as pd
 import numpy as np
 
 
-def augment_minority_continuous_timeseries(X_train, y_train, n_augmentations=3):
-    """
-    Augment minority class in time-series continuous data by adding Gaussian noise.
-    Maintains temporal order without shuffling.
-    """
-    cols = X_train.columns
+def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=42):
+    rng = np.random.default_rng(random_state)
 
-    X_minority = X_train[y_train == 1]
-    X_majority = X_train[y_train == 0]
-    y_minority = y_train[y_train == 1]
-    y_majority = y_train[y_train == 0]
-    
-    # Augment minority
-    X_augmented = [X_minority]
-    y_augmented = [y_minority]
-    
+    X_df = pd.DataFrame(X)  # works whether X is ndarray or DataFrame
+    y_ser = pd.Series(y).reset_index(drop=True)
+
+    if y_ser.nunique() < 2:
+        return X_df, y_ser
+
+    X_min = X_df[y_ser == 1]
+    y_min = y_ser[y_ser == 1]
+
+    # If a fold happens to have no minority, do nothing
+    if len(X_min) == 0:
+        return X_df, y_ser
+
+    std = X_min.std(axis=0).to_numpy()
+    std = np.where(np.isfinite(std), std, 0.0)
+
+    X_aug_parts = [X_df]
+    y_aug_parts = [y_ser]
+
     for _ in range(n_augmentations):
-        noise = np.random.normal(0, 0.01 * np.std(X_minority, axis=0), X_minority.shape)
-        X_noisy = pd.DataFrame(X_minority.values + noise, columns=cols)
-        X_augmented.append(X_noisy)
-        y_augmented.append(y_minority)
-    
-    # Combine majority and augmented minority
-    X_balanced = pd.concat([X_majority] + X_augmented, ignore_index=True)
-    y_balanced = pd.concat([y_majority] + y_augmented, ignore_index=True)
+        noise = rng.normal(loc=0.0, scale=noise_frac * std, size=X_min.shape)
+        X_noisy = X_min.to_numpy() + noise
+        X_aug_parts.append(pd.DataFrame(X_noisy, columns=X_df.columns))
+        y_aug_parts.append(y_min)
 
-    return X_balanced, y_balanced
+    X_out = pd.concat(X_aug_parts, ignore_index=True)
+    y_out = pd.concat(y_aug_parts, ignore_index=True)
+
+    return X_out, y_out
 
 
 ###  tidsderiventen (d/dt) + andre ordre (d2/dt2) TODO: test this out

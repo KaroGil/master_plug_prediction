@@ -1,4 +1,3 @@
 Model,Best Validation F1 Score
-Dummy (baseline),0.664392430244998
-Random Forest,1.0
-XGBoost,0.9920783867403685
+Random Forest,0.06510456065005735
+XGBoost,0.6029440923217448
