@@ -93,13 +93,11 @@ def remove_correlated_features(X, threshold=0.9):
     corr_matrix = X.corr().abs()
     upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
-    print("Correlation matrix:", corr_matrix)
-
     to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
 
     X_reduced = X.drop(columns=to_drop)
 
-    print(f"⚙️ Removed {len(to_drop)} correlated features with threshold > {threshold}")
+    print(f"⚙️  Removed {len(to_drop)} correlated features with threshold > {threshold}")
     print("Remaining features:", X_reduced.shape[1])
 
     return X_reduced, to_drop
