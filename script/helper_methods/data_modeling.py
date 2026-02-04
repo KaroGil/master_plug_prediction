@@ -3,7 +3,7 @@ from imblearn import FunctionSampler
 import numpy as np
 import pandas as pd
 from imblearn.pipeline import Pipeline as ImbPipeline
-from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report, f1_score, fbeta_score, make_scorer
 
 from . import feature_engineering as fe
@@ -13,26 +13,14 @@ from .models import get_models_and_params
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def per_logid_time_cv(groups, n_splits=5, gap=0):
-    groups = np.array(groups)
-    unique_logids = np.unique(groups)
+def leave_one_run_out_cv(groups):
+    '''Leaves out all samples from one group (run) for testing in each fold'''
 
-    for run in unique_logids:
-        idx = np.where(groups == run)[0]
-        tscv = TimeSeriesSplit(n_splits=n_splits, gap=gap)
-        for train_index, val_index in tscv.split(idx):
-            yield idx[train_index], idx[val_index]
-
-
-def drop_one_class_folds(cv, y):
-    safe = []
-    for tr, va in cv:
-        if y.iloc[tr].nunique() < 2:   # train fold
-            continue
-        safe.append((tr, va))
-    if not safe:
-        raise ValueError("No valid folds left after dropping one-class folds.")
-    return safe
+    groups = np.asarray(groups)
+    for g in np.unique(groups):
+        test_idx  = np.where(groups == g)[0]
+        train_idx = np.where(groups != g)[0]
+        yield train_idx, test_idx
 
 
 def make_pipeline(model):
@@ -44,7 +32,7 @@ def make_pipeline(model):
     )
 
     pipe = ImbPipeline(steps=[
-        ("augmenter", sampler),
+        #("augmenter", sampler),
         ("base_model", model)
     ])
 
@@ -54,17 +42,7 @@ def make_pipeline(model):
 def tune_random_search(model, X_train, y_train, params, n_iter=40):
     '''Perform Randomized Search with Time Series CV'''
 
-    print(X_train["LogId"].nunique())
-
-    tmp = pd.concat([X_train["LogId"], y_train.squeeze()], axis=1)
-    tmp.columns = ["LogId","y"]
-    print((tmp.groupby("LogId")["y"].max() == 1).sum())
-
-
-    # Time-series 
-    tscv = per_logid_time_cv(X_train['LogId'], n_splits=5) 
-
-    tscv = drop_one_class_folds(tscv, y_train)
+    cv = list(leave_one_run_out_cv(X_train["LogId"]))
     
     # Scoring metrics
     scoring = {
@@ -76,6 +54,12 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
     pipe = make_pipeline(model)
 
+    for tr, te in cv:
+        print(
+            "train pos:", (y_train.iloc[tr] == 1).sum(),
+            "test pos:",  (y_train.iloc[te] == 1).sum()
+        )
+
     # Randomized Search with TSCV
     search = RandomizedSearchCV(
         estimator=pipe,
@@ -83,7 +67,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         n_iter=n_iter,
         scoring=scoring,
         refit='F1-score',
-        cv=tscv,
+        cv=cv,
         n_jobs=-1,
         verbose=3,
         random_state=42,
@@ -94,7 +78,14 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
     search.fit(X_train, y_train)
 
     print("\nBest parameters:", search.best_params_)
-    print("Best Training F1 score:", search.cv_results_['mean_train_F1-score'][search.best_index_])
+    idx = search.best_index_
+
+    # print("Train AP:", search.cv_results_['mean_train_ap'][idx])
+    # print("CV AP:", search.cv_results_['mean_test_ap'][idx])
+
+    print("Train F1:", search.cv_results_['mean_train_F1-score'][idx])
+    print("CV F1:", search.cv_results_['mean_test_F1-score'][idx])
+
     print("Best F1 score:", search.best_score_)
 
     cv_results = pd.DataFrame(search.cv_results_)
@@ -116,7 +107,7 @@ def find_best_model(X_train, y_train):
             model,
             X_train, y_train,
             hyperparameters[name],
-            n_iter=5
+            n_iter=3
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 

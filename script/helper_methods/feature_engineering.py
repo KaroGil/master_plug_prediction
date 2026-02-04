@@ -95,12 +95,15 @@ def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", ou
 
     return df
 
-def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_col="Pump outlet pressure (Mean)"):
+def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_col="Pump outlet pressure (Mean)", clip=1e4):
     """
     Calculate the fraction of pump outlet pressure to the pressure drop.
     Fraction = ΔP / P_outlet
     """
-    df["Pump_Pressure_Ratio"] = df[ts_pressure_col] / (df[outlet_col] + 1e-6) 
+    
+    ratio = df[ts_pressure_col] / (df[outlet_col].abs() + 1e-3) 
+    ratio = ratio.replace([np.inf, -np.inf], np.nan)
+    df["Pump_Pressure_Ratio"] = ratio.clip(-clip, clip)
 
     return df
 
@@ -164,5 +167,37 @@ def feature_engineering_pipeline(df):
     df = flow_sensitivity_feature(df)
     df = ts_temperature_rise(df)
     df = ts_bypass_difference(df)
+
+    return df
+
+
+
+def plug_index(df, window_size=10, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
+    """
+    Function to calculate Plug Index based on pressure drop and flow rate.
+    Plug index indicates likelihood of plug formation.
+    """
+
+    df["TS_in_changed_out"] = 0
+
+    if p_up_col not in df.columns:
+        p_up_col = "Pump outlet pressure (Mean)"
+        df["TS_in_changed_out"] = 1
+
+    df = df.copy()
+
+    w = int(window_size / 0.05)
+    if w < 2:
+        raise ValueError("Window size too small for plug index calculation.")
+    
+    df["dP"] = df[p_up_col] - df[p_down_col]
+
+    df["dP_slope"] = df["dP"].rolling(window=w).apply(lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True)
+
+    df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
+    df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
+    df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
+
+    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
 
     return df

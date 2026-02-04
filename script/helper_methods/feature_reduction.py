@@ -43,12 +43,10 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     raw_shap = explainer.shap_values(X_shap, check_additivity=False)
 
     if isinstance(raw_shap, list):
-        # Classic SHAP shape: list[class] → (n_samples, n_features)
         shap_values = raw_shap[1]
     else:
-        # SHAP sometimes returns (n_samples, n_features, 2)
         if raw_shap.ndim == 3:
-            shap_values = raw_shap[..., 1]   # take only class-1 contributions
+            shap_values = raw_shap[..., 1] 
         else:
             shap_values = raw_shap
 
@@ -66,7 +64,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
         selected = np.zeros_like(importance, dtype=bool)
         selected[idx] = True
 
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId']
+    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId', 'Flow rate (Mean)_mean']
     always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
     selected[always_keep_idx] = True
 
@@ -94,6 +92,9 @@ def remove_correlated_features(X, threshold=0.9):
     upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
     to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
+    
+    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId', 'Flow rate (Mean)_mean']
+    to_drop = [col for col in to_drop if col not in always_keep]
 
     X_reduced = X.drop(columns=to_drop)
 

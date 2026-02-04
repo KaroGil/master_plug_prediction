@@ -42,7 +42,7 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     print(f"Window size: {window}")
     print(f"Total signals: {len(feature_cols)}")
     X = pd.DataFrame(X, columns=[f"{col}_{stat}" for col in feature_cols for stat in ["mean", "std", "min", "max", "slope"]])
-    X['LogId'] = pd.Series(log_ids).astype("category") 
+    X['LogId'] = pd.Series(log_ids)
 
     return X, pd.Series(y)
 
