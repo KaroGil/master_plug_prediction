@@ -172,7 +172,7 @@ def feature_engineering_pipeline(df):
 
 
 
-def plug_index(df, window_size=10, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
+def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
     """
     Function to calculate Plug Index based on pressure drop and flow rate.
     Plug index indicates likelihood of plug formation.
@@ -192,7 +192,7 @@ def plug_index(df, window_size=10, p_up_col="TS inlet pressure (Mean)", p_down_c
     
     df["dP"] = df[p_up_col] - df[p_down_col]
 
-    df["dP_slope"] = df["dP"].rolling(window=w).apply(lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True)
+    df["dP_slope"] = df["dP"].rolling(window=w, min_periods=w).apply(lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True).fillna(0)
 
     df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
