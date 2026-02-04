@@ -36,14 +36,14 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
 
         # Initial plug labeling
         df["Plug"] = np.where((flow < flow_thresh ), 1, 0)
-        df["Anomaly"] = 0
+        #df["Anomaly"] = 0
 
         # Reset false positives
         for i in range(1, len(df) - mask):
             if df["Plug"].iloc[i] == 1 and (flow.iloc[i+mask] > flow_thresh or flow.iloc[i-mask] > flow_thresh):
                 df.loc[df.index[i], "Plug"] = 0
 
-                df.loc[df.index[max(0, i-mask): min(len(df), i+mask)], "Anomaly"] = 1
+                #df.loc[df.index[max(0, i-mask): min(len(df), i+mask)], "Anomaly"] = 1
 
     if "pressure" in thresholds:
         pressure = df["Pump outlet pressure (Mean)"]
@@ -144,18 +144,33 @@ def preprocess_data(datasets, dataset_names, BASE_PATH = ""):
 
     print(f"Processing data: {dataset_names[0]}")
     X, y = feature_engineering_windowing(datasets[0], dataset_names[0])
+    print("NaN values in data:")
+    print(X.isna().sum().sum())
+    print(X.columns[X.isna().any()].tolist())
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
         print(f"Processing data: {name}") 
         X_add, y_add = feature_engineering_windowing(df, name)
 
+        # print nan values columsn and sums
+        print("NaN values in additional data:")
+        print(X_add.isna().sum().sum())
+        print(X_add.columns[X_add.isna().any()].tolist())
+
         X = pd.concat([X, X_add], ignore_index=True)
         y = pd.concat([y, y_add], ignore_index=True)
-    print(X.head(5))
-    print("Nan values in data", X.isna().sum())
+
+    print("NaN values in data before split:")
+    print(X.isna().sum().sum())
+    print(X.columns[X.isna().any()].tolist())
+
     X_train, X_test, y_train, y_test = split_data(X, y)
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
+
+    print("NaN values after split:")
+    print(X_train.isna().sum().sum())
+    print(X_train.columns[X_train.isna().any()].tolist())
 
     # Feature reduction
     X_train, selected = fr.shap_feature_importance(X_train, y_train, shap_subset_size=50)
@@ -164,7 +179,8 @@ def preprocess_data(datasets, dataset_names, BASE_PATH = ""):
     X_train, to_drop = fr.remove_correlated_features(X_train, threshold=0.9)
     X_test = X_test.drop(columns=to_drop)
     
-    print("Types", X_train.dtypes)
+    print("Nans in X_train before filling:", X_train.isna().sum().sum())
+    
     #drop any remaining NaN values
     X_train.fillna(0,inplace=True)
     X_test.fillna(0,inplace=True) 
@@ -198,7 +214,5 @@ def preprocess_data_predict(df, dataset_name):
     X = align_features(X, FEATURES)
 
     X = X.drop(columns=['LogId'])
-
-    print("Final columns for prediction:",("\n").join(X.columns.tolist()))
 
     return X, y

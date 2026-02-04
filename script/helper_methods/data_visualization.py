@@ -1,9 +1,10 @@
 import numpy as np
+import pandas as pd  
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
-
 
 def plot_feature_histograms(data, name=None):
     '''Histograms for each numeric feature'''
@@ -146,18 +147,18 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     plt.show()
 
 
-def plot_feature_importance(feat_imp):
-    '''Plot feature importance from a trained model'''
+# def plot_feature_importance(feat_imp):
+#     '''Plot feature importance from a trained model'''
 
-    feat_imp_sorted = feat_imp.sort_values(ascending=False)
+#     feat_imp_sorted = feat_imp.sort_values(ascending=False)
 
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x=feat_imp_sorted.values, y=feat_imp_sorted.index, palette="viridis", hue=feat_imp_sorted.values, legend=False)
-    plt.title('Feature Importance from RandomForest')
-    plt.xlabel('Importance')
-    plt.ylabel('Feature')
-    plt.tight_layout()
-    plt.show()
+#     plt.figure(figsize=(10, 5))
+#     sns.barplot(x=feat_imp_sorted.values, y=feat_imp_sorted.index, palette="viridis", hue=feat_imp_sorted.values, legend=False)
+#     plt.title('Feature Importance from RandomForest')
+#     plt.xlabel('Importance')
+#     plt.ylabel('Feature')
+#     plt.tight_layout()
+#     plt.show()
 
 
 def plot_correlation_matrix(X_train):
@@ -270,3 +271,62 @@ def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     plt.tight_layout()
     plt.show()
 
+
+def plot_feature_importance(
+    model,
+    X: pd.DataFrame,
+    y,
+    method: str = "auto",
+    top_n: int = 25,
+    scoring: str = "f1",
+    n_repeats: int = 5,
+    random_state: int = 42,
+    drop_cols: tuple[str, ...] = ("LogId",),
+    figsize=(9, 7),
+):
+
+    Xp = X.drop(columns=[c for c in drop_cols if c in X.columns]).copy()
+    feature_names = Xp.columns.to_list()
+
+    if method not in {"auto", "permutation", "model"}:
+        raise ValueError("method must be one of: auto, permutation, model")
+
+    use_model = False
+    if method in {"auto", "model"}:
+        if hasattr(model, "feature_importances_"):
+            importances = np.asarray(model.feature_importances_, dtype=float)
+            use_model = True
+        elif hasattr(model, "coef_"):
+            coef = np.asarray(model.coef_, dtype=float)
+            importances = np.abs(coef).ravel()
+            use_model = True
+
+    if method == "permutation" or (method == "auto" and not use_model):
+        pi = permutation_importance(
+            model, Xp, y,
+            scoring=scoring,
+            n_repeats=n_repeats,
+            random_state=random_state,
+            n_jobs=-1,
+        )
+        importances = pi.importances_mean
+        importances_std = pi.importances_std
+        title = f"Permutation importance (scoring={scoring})"
+    else:
+        importances_std = None
+        title = "Model-based feature importance"
+
+    # Build ranking table
+    imp_df = pd.DataFrame({"feature": feature_names, "importance": importances})
+    imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
+
+    # Plot
+    plt.figure(figsize=figsize)
+    plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
+    plt.title(title)
+    plt.xlabel("Importance")
+    plt.tight_layout()
+    plt.show()
+
+    # Optional: print table (handy for copy/paste)
+    return imp_df.reset_index(drop=True)

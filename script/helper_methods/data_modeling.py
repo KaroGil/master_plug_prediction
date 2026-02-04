@@ -7,6 +7,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report, f1_score, fbeta_score, make_scorer
 
 from . import feature_engineering as fe
+from . import data_visualization as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
 
@@ -146,8 +147,16 @@ def model_data(X_train, y_train, X_test, y_test):
 
     best_model = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
     save_model(best_model)
-
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
+
+    imp = dv.plot_feature_importance(
+        best_model,
+        X_train,
+        y_train,
+        method="permutation",
+        top_n=20
+    )
+    print(imp)
    
     y_test_pred = evaluate_model_on_test(best_model, X_test, y_test)
     return best_model, y_test_pred
