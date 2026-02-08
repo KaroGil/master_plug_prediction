@@ -139,14 +139,16 @@ def feature_engineering_windowing(df, dataset_name="data1"):
     return X, y
 
 
-def preprocess_data(datasets, dataset_names, BASE_PATH = ""):
+def preprocess_data(datasets, dataset_names, horizon, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
 
     print(f"Processing data: {dataset_names[0]}")
+    create_future_target(datasets[0], horizon=horizon)
     X, y = feature_engineering_windowing(datasets[0], dataset_names[0])
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
         print(f"Processing data: {name}") 
+        create_future_target(df, horizon=horizon)
         X_add, y_add = feature_engineering_windowing(df, name)
         common_cols_X = list(set.intersection(*(set(df.columns) for df in [X, X_add])))
 
