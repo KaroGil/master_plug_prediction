@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 
-
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
+    """
+    Create windowed features using statistical summaries.
+    """
+
     X_rows = []
     y = []
     log_ids = []
@@ -34,7 +37,7 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     print(f"Window size: {window}")
     print(f"Total signals: {len(feature_cols)}")
     X = pd.DataFrame(X, columns=[f"{col}_{stat}" for col in feature_cols for stat in ["mean", "std", "min", "max", "slope"]])
-    X['LogId'] = pd.Series(log_ids).astype("category") 
+    X['LogId'] = pd.Series(log_ids)
 
     return X, pd.Series(y)
 
@@ -44,11 +47,6 @@ def prep_window(df, features):
     WINDOW_S = 2
     W = FS * WINDOW_S
 
-    # Sanity checks
-    assert "Plug_future" in df.columns, df.columns
-    assert "Flow rate (Mean)" in df.columns, df.columns
-
-    # Create windowed features and labels
     X, y = make_windowed_Xy_stats(
     df=df,
     feature_cols=features,
@@ -56,7 +54,6 @@ def prep_window(df, features):
     window=W
     )
 
-    # Print shapes for verification
     print(f"X shape: {X.shape}")
     print(f"y shape: {y.shape}")
 

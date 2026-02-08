@@ -1,9 +1,10 @@
 import numpy as np
+import pandas as pd  
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 from sklearn.calibration import calibration_curve
-
+from sklearn.inspection import permutation_importance
+from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 
 def plot_feature_histograms(data, name=None):
     '''Histograms for each numeric feature'''
@@ -42,7 +43,7 @@ def visualize_flow_rate(data, name=None):
     '''Visualize flow rate and pump outlet pressure over time'''
 
     plt.figure(figsize=(12,6))
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)_mean"], label="Flow rate")
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate")
 
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
@@ -75,26 +76,22 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column="Plug", anomalies=False, name=None):
+def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
 
     # Plot all data
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Pump outlet pressure (Mean)"], label="Pump outlet pressure", alpha=0.5)
+    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
 
     # Highlight Plug=1 events
     plug_events = data[data[plug_column] == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
-    plt.scatter(plug_events.index, plug_events["Pump outlet pressure (Mean)"], color="orange", label=f"{plug_column}=1 (Pressure)", zorder=5)
+    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
 
     # Highlight anomalies
     if anomalies and "Anomaly" in data.columns:
         anomaly_events = data[data["Anomaly"] == 1]
-        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
-        plt.scatter(anomaly_events.index, anomaly_events["Pump outlet pressure (Mean)"], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x')
-
+        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
@@ -147,20 +144,6 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     model_name_str = f" by {model_name}" if model_name else ""
     plt.title(f"Predicted vs True Plug=1 Events{model_name_str}")
     plt.legend()
-    plt.show()
-
-
-def plot_feature_importance(feat_imp):
-    '''Plot feature importance from a trained model'''
-
-    feat_imp_sorted = feat_imp.sort_values(ascending=False)
-
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x=feat_imp_sorted.values, y=feat_imp_sorted.index, palette="viridis", hue=feat_imp_sorted.values, legend=False)
-    plt.title('Feature Importance from RandomForest')
-    plt.xlabel('Importance')
-    plt.ylabel('Feature')
-    plt.tight_layout()
     plt.show()
 
 
@@ -275,36 +258,89 @@ def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
     plt.show()
 
 
-def plot_anomaly_score_distribution(model, data):
-    '''Plot distribution of anomaly scores'''
+def plot_feature_importance(
+    model,
+    X: pd.DataFrame,
+    y,
+    method: str = "auto",
+    top_n: int = 25,
+    scoring: str = "f1",
+    n_repeats: int = 5,
+    random_state: int = 42,
+    drop_cols: tuple[str, ...] = ("LogId",),
+    figsize=(9, 7),
+):
 
-    scores = -model.score_samples(data)
-    plt.hist(scores, bins=50)
-    plt.title(f"{type(model).__name__} anomaly score distribution")
-    plt.xlabel("Score")
-    plt.ylabel("Count")
+    Xp = X.drop(columns=[c for c in drop_cols if c in X.columns]).copy()
+    feature_names = Xp.columns.to_list()
+
+    if method not in {"auto", "permutation", "model"}:
+        raise ValueError("method must be one of: auto, permutation, model")
+
+    use_model = False
+    if method in {"auto", "model"}:
+        if hasattr(model, "feature_importances_"):
+            importances = np.asarray(model.feature_importances_, dtype=float)
+            use_model = True
+        elif hasattr(model, "coef_"):
+            coef = np.asarray(model.coef_, dtype=float)
+            importances = np.abs(coef).ravel()
+            use_model = True
+
+    if method == "permutation" or (method == "auto" and not use_model):
+        pi = permutation_importance(
+            model, Xp, y,
+            scoring=scoring,
+            n_repeats=n_repeats,
+            random_state=random_state,
+            n_jobs=-1,
+        )
+        importances = pi.importances_mean
+        importances_std = pi.importances_std
+        title = f"Permutation importance (scoring={scoring})"
+    else:
+        importances_std = None
+        title = "Model-based feature importance"
+
+    # Build ranking table
+    imp_df = pd.DataFrame({"feature": feature_names, "importance": importances})
+    imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
+
+    # Plot
+    plt.figure(figsize=figsize)
+    plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
+    plt.title(title)
+    plt.xlabel("Importance")
+    plt.tight_layout()
     plt.show()
 
-
-def feature_importnace_anomaly(model):
-    '''Plot feature importance for model'''
-
-    importances = np.array([tree.feature_importances_ for tree in model.estimators_])
-
-    importances = importances.mean(axis=0)
-
-    plt.bar(range(len(importances)), importances)
-    plt.title(f"{type(model).__name__} Feature Importance")
-    plt.xlabel("Feature index")
-    plt.ylabel("Importance")
-    plt.show()
+    # Optional: print table (handy for copy/paste)
+    return imp_df.reset_index(drop=True)
 
 
-def plot_anomaly_distribution(preds, model_name):
-    unique, counts = np.unique(preds, return_counts=True)
-    plt.bar(unique, counts)
-    plt.xticks(unique, ['Normal', 'Anomaly'])
-    plt.title(f"Anomaly Distribution for {model_name}")
-    plt.xlabel("Class")
-    plt.ylabel("Count")
-    plt.show()
+### VISUALIZING RESULTS FOR PREDICT_ALL ###
+def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)"):
+    if flow_col not in df.columns:
+        flow_col = "Flow rate (Mean)_mean"
+
+
+    plt.subplot(4,3,figureNum)
+    plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
+
+    # Highlight true Plug events
+    true_plug_events = df[y == 1]
+    plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+    plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')  if pressure_col in df.columns else None
+    
+    # Highlight predicted Plug events
+    plug_events = df[y_pred == 1]
+    plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.') 
+    plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  if pressure_col in df.columns else None
+     
+    plt.xlabel("Elapsed_seconds")
+    plt.ylabel("Value")
+    if figureNum == 12:
+        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum} [used as test set]")
+    else:
+        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}" if figureNum not in [3,5,8,11] else f"Predicted vs True Plug=1 Events for data nr {figureNum} [used for training]")
+    plt.legend()
