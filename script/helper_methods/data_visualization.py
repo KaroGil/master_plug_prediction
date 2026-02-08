@@ -147,20 +147,6 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     plt.show()
 
 
-# def plot_feature_importance(feat_imp):
-#     '''Plot feature importance from a trained model'''
-
-#     feat_imp_sorted = feat_imp.sort_values(ascending=False)
-
-#     plt.figure(figsize=(10, 5))
-#     sns.barplot(x=feat_imp_sorted.values, y=feat_imp_sorted.index, palette="viridis", hue=feat_imp_sorted.values, legend=False)
-#     plt.title('Feature Importance from RandomForest')
-#     plt.xlabel('Importance')
-#     plt.ylabel('Feature')
-#     plt.tight_layout()
-#     plt.show()
-
-
 def plot_correlation_matrix(X_train):
     '''Plot correlation matrix of features to identify relationships'''
 
@@ -330,3 +316,31 @@ def plot_feature_importance(
 
     # Optional: print table (handy for copy/paste)
     return imp_df.reset_index(drop=True)
+
+
+### VISUALIZING RESULTS FOR PREDICT_ALL ###
+def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)"):
+    if flow_col not in df.columns:
+        flow_col = "Flow rate (Mean)_mean"
+
+
+    plt.subplot(4,3,figureNum)
+    plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
+
+    # Highlight true Plug events
+    true_plug_events = df[y == 1]
+    plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+    plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')  if pressure_col in df.columns else None
+    
+    # Highlight predicted Plug events
+    plug_events = df[y_pred == 1]
+    plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.') 
+    plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  if pressure_col in df.columns else None
+     
+    plt.xlabel("Elapsed_seconds")
+    plt.ylabel("Value")
+    if figureNum == 12:
+        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum} [used as test set]")
+    else:
+        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}" if figureNum not in [3,5,8,11] else f"Predicted vs True Plug=1 Events for data nr {figureNum} [used for training]")
+    plt.legend()

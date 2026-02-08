@@ -5,7 +5,7 @@ import numpy as np
 def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=42):
     rng = np.random.default_rng(random_state)
 
-    X_df = pd.DataFrame(X)  # works whether X is ndarray or DataFrame
+    X_df = pd.DataFrame(X) 
     y_ser = pd.Series(y).reset_index(drop=True)
 
     if y_ser.nunique() < 2:
@@ -36,7 +36,7 @@ def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0
     return X_out, y_out
 
 
-###  tidsderiventen (d/dt) + andre ordre (d2/dt2) TODO: test this out
+# Derivatives (d/dt) + (d2/dt2)
 def add_time_derivative_features(df, time_col="Time"):
     """
     Add first and second time derivative features for all numeric columns in the DataFrame.
@@ -56,7 +56,6 @@ def add_time_derivative_features(df, time_col="Time"):
         df[f"{col}_d2"] = second_derivative.fillna(0)
 
     return df
-
 
 
 ### PHYSICS BASED FEATURES ###
@@ -108,27 +107,27 @@ def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_c
     return df
 
 
-
 ## Flow-pressure interaction feature
 
-def hydraulic_conductance_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"): #TODO
+def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
     """
-    Calculate hydraulic conductance as a feature. 
-    C = Q / ΔP
-    where Q is flow rate and ΔP is pressure drop.
+    Calculate flow path openness as a feature.
+    Openness = Q / ΔP
+    Higher values indicate more open flow paths, while lower values suggest constriction.
     """
-    df["Hydraulic_Conductance"] = df[flow_col] / (df[ts_pressure_col] + 1e-6)  
+    df["Flow_Path_Openness"] = df[flow_col] / (df[ts_pressure_col] + 1e-6)  
 
     return df
 
 
-def flow_sensitivity_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
+def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
     """
-    Calculate flow sensitivity to inlet pressure as a feature.
-    Sensitivity = dQ / dP_pump
+    Calculates the flow-pressure response feature, which captures how changes in flow rate affect pressure.
+    Response = dP/dQ (change in pressure per unit change in flow)
     """
-    df["Flow_Sensitivity"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
+    df["Flow_Pressure_Response"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
     return df
+
 
 ### Temperature-based derived features
 
@@ -163,8 +162,8 @@ def feature_engineering_pipeline(df):
     df = pressure_drop_feature(df)
     df = normlized_pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
-    df = hydraulic_conductance_feature(df)
-    df = flow_sensitivity_feature(df)
+    df = flow_path_openess_feature(df)
+    df = flow_pressure_response_feature(df)
     df = ts_temperature_rise(df)
     df = ts_bypass_difference(df)
 

@@ -17,7 +17,7 @@ def get_models_and_params(y):
             "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight= np.sum(y == 0) / np.sum(y == 1)),
         }
-        # legg til base_model__ i param grid hvis pipe brukes
+
         hyperparameters = {
             "Random Forest": {
                 'base_model__n_estimators': [100],

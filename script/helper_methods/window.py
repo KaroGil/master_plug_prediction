@@ -4,13 +4,8 @@ import numpy as np
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     """
     Create windowed features using statistical summaries.
-    
-    :param df: DataFrame containing the data
-    :param feature_cols: List of feature column names to use
-    :param label_col: Name of the label column
-    :param window: Size of the rolling window
-    :return: Tuple of (X, y) where X is the feature DataFrame and y is the label Series
     """
+
     X_rows = []
     y = []
     log_ids = []
