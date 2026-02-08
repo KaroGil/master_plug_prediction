@@ -144,33 +144,18 @@ def preprocess_data(datasets, dataset_names, BASE_PATH = ""):
 
     print(f"Processing data: {dataset_names[0]}")
     X, y = feature_engineering_windowing(datasets[0], dataset_names[0])
-    print("NaN values in data:")
-    print(X.isna().sum().sum())
-    print(X.columns[X.isna().any()].tolist())
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
         print(f"Processing data: {name}") 
         X_add, y_add = feature_engineering_windowing(df, name)
+        common_cols_X = list(set.intersection(*(set(df.columns) for df in [X, X_add])))
 
-        # print nan values columsn and sums
-        print("NaN values in additional data:")
-        print(X_add.isna().sum().sum())
-        print(X_add.columns[X_add.isna().any()].tolist())
-
-        X = pd.concat([X, X_add], ignore_index=True)
+        X = pd.concat([X[common_cols_X], X_add[common_cols_X]], ignore_index=True)
         y = pd.concat([y, y_add], ignore_index=True)
-
-    print("NaN values in data before split:")
-    print(X.isna().sum().sum())
-    print(X.columns[X.isna().any()].tolist())
 
     X_train, X_test, y_train, y_test = split_data(X, y)
     print_distribution(y_train, "Training set")
     print_distribution(y_test, "Test set")
-
-    print("NaN values after split:")
-    print(X_train.isna().sum().sum())
-    print(X_train.columns[X_train.isna().any()].tolist())
 
     # Feature reduction
     X_train, selected = fr.shap_feature_importance(X_train, y_train, shap_subset_size=50)
