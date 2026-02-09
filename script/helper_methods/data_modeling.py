@@ -108,7 +108,7 @@ def find_best_model(X_train, y_train):
             model,
             X_train, y_train,
             hyperparameters[name],
-            n_iter=3
+            n_iter=5
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 

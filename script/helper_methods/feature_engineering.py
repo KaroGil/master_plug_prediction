@@ -43,7 +43,7 @@ def add_time_derivative_features(df, time_col="Time"):
     Assumes 'time_col' is in datetime format (e.g., '1900-01-01 11:07:40.450') and sorted.
     """
     df[time_col] = pd.to_datetime(df[time_col])
-    time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  # Fill NaN for first row
+    time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  
 
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     numeric_cols = [col for col in numeric_cols if col not in ['Plug_future', 'Plug', 'Anomaly']]  # Exclude target columns
