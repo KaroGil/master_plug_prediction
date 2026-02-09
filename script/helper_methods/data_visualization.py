@@ -307,14 +307,13 @@ def plot_feature_importance(
     imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
 
     # Plot
-    plt.figure(figsize=figsize)
-    plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
-    plt.title(title)
-    plt.xlabel("Importance")
-    plt.tight_layout()
-    plt.show()
+    # plt.figure(figsize=figsize)
+    # plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
+    # plt.title(title)
+    # plt.xlabel("Importance")
+    # plt.tight_layout()
+    #plt.show()
 
-    # Optional: print table (handy for copy/paste)
     return imp_df.reset_index(drop=True)
 
 

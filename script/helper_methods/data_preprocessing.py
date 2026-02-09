@@ -139,7 +139,7 @@ def feature_engineering_windowing(df, dataset_name="data1"):
     return X, y
 
 
-def preprocess_data(datasets, dataset_names, horizon, BASE_PATH = ""):
+def preprocess_data(datasets, dataset_names, horizon=200, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
 
     print(f"Processing data: {dataset_names[0]}")
@@ -191,10 +191,12 @@ def preprocess_data(datasets, dataset_names, horizon, BASE_PATH = ""):
     return X_train, X_test, y_train, y_test
 
 
-def preprocess_data_predict(df, dataset_name):
+def preprocess_data_predict(df, dataset_name, horizon=200):
     '''Full preprocessing pipeline for prediction'''
 
     FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
+
+    create_future_target(df, horizon=horizon)
 
     X, y = feature_engineering_windowing(df, dataset_name)
 
