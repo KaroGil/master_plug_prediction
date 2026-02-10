@@ -1,5 +1,6 @@
 # File extension imports
 import os
+import yaml
 import joblib
 import numpy as np
 import pandas as pd
@@ -9,6 +10,14 @@ from . import window as w
 from . import data_loader as dl
 from . import feature_reduction as fr
 from . import feature_engineering as fe
+
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+target_col = cfg["data"]["target"]
+non_feature_columns = cfg["data"]["non_feature_columns"]
 
 # Define paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,14 +45,11 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
 
         # Initial plug labeling
         df["Plug"] = np.where((flow < flow_thresh ), 1, 0)
-        #df["Anomaly"] = 0
 
         # Reset false positives
         for i in range(1, len(df) - mask):
             if df["Plug"].iloc[i] == 1 and (flow.iloc[i+mask] > flow_thresh or flow.iloc[i-mask] > flow_thresh):
                 df.loc[df.index[i], "Plug"] = 0
-
-                #df.loc[df.index[max(0, i-mask): min(len(df), i+mask)], "Anomaly"] = 1
 
     if "pressure" in thresholds:
         pressure = df["Pump outlet pressure (Mean)"]
@@ -59,8 +65,8 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
 def create_future_target(df, horizon=200):
     '''Create target column 'Plug_future' by shifting 'Plug' column'''
 
-    df['Plug_future'] = (df['Plug'].shift(-1).rolling(window=horizon, min_periods=1).max())
-    df.dropna(subset=['Plug_future'], inplace=True)
+    df[target_col] = (df['Plug'].shift(-1).rolling(window=horizon, min_periods=1).max())
+    df.dropna(subset=[target_col], inplace=True)
 
 
 def split_data(X,y):
@@ -94,7 +100,7 @@ def scale_features(X_train, X_test):
     X_train, X_test = X_train.copy(), X_test.copy()
 
     numeric_cols = X_train.select_dtypes(include=['number']).columns.tolist()
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug', 'Plug_future', 'Anomaly', 'LogId']]
+    numeric_cols = [col for col in numeric_cols if col not in non_feature_columns]
 
     scaler = StandardScaler()
     X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
@@ -134,7 +140,7 @@ def feature_engineering_windowing(df, dataset_name="data1"):
 
     df_feat = df.select_dtypes(include=['number']).copy()
 
-    X, y = w.prep_window(df, [x for x in df_feat.columns.tolist() if x not in ['Plug', 'Plug_future', 'LogId']])
+    X, y = w.prep_window(df, [x for x in df_feat.columns.tolist() if x not in  non_feature_columns])
 
     return X, y
 

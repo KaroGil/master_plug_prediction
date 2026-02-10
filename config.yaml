@@ -1,0 +1,15 @@
+experiment:
+  name: predict_all
+  random_state: 42
+
+data:
+  datasets: [3, 4, 5, 8, 11, 12]
+  target: "Plug_future"
+  non_feature_columns: ["Plug_future", "Plug", "LogId"]
+  always_keep_columns:
+    [
+      "Flow rate (Mean)",
+      "Pump outlet pressure (Mean)",
+      "LogId",
+      "Flow rate (Mean)_mean",
+    ]

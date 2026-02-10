@@ -95,17 +95,6 @@ def load_data(path="../data/raw_data/data1/*.csv"):
     return df
 
 
-def load_split_data(data: list, dataset_name: str, base_path="../data/processed_data/"):
-    '''Load datasets to CSV files'''
-    loaded_data = {}
-
-    for key in data:
-        loaded_data[key] = pd.read_csv(f"{base_path}{dataset_name}_{key}.csv", index_col=0)
-    print(f"Load data with base name: {dataset_name}")
-
-    return loaded_data
-
-
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
     for key, df in data.items():

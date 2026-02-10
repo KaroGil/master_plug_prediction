@@ -1,8 +1,16 @@
 import os
 import shap
+import yaml
 import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
+always_keep_columns = cfg["data"]["always_keep_columns"]
 
 # Define paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +37,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     remove features with low importance. 
     '''    
 
-    baseline = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+    baseline = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1)
     baseline.fit(X_train, y_train)
     print("🛠️ Baseline model trained.")
 
@@ -64,8 +72,7 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
         selected = np.zeros_like(importance, dtype=bool)
         selected[idx] = True
 
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId', 'Flow rate (Mean)_mean']
-    always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep if col in X_train.columns]
+    always_keep_idx = [X_train.columns.get_loc(col) for col in always_keep_columns if col in X_train.columns]
     selected[always_keep_idx] = True
 
     X_train_reduced = X_train.loc[:, selected]
@@ -93,8 +100,7 @@ def remove_correlated_features(X, threshold=0.9):
 
     to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
     
-    always_keep = ['Flow rate (Mean)', 'Pump outlet pressure (Mean)', 'Anomaly', 'LogId', 'Flow rate (Mean)_mean']
-    to_drop = [col for col in to_drop if col not in always_keep]
+    to_drop = [col for col in to_drop if col not in always_keep_columns]
 
     X_reduced = X.drop(columns=to_drop)
 
