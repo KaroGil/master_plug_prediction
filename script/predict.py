@@ -1,9 +1,16 @@
+import yaml
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 import joblib
 import sys
 import numpy as np
 import pandas as pd
 from script.helper_methods import data_visualization as dv
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+target_col = cfg["data"]["target"]
 
 BASE_PATH = "data/labeled/labeled_"
 
@@ -20,7 +27,7 @@ print("Model used: " + type(model).__name__ + " with parameters: " + str(model.g
 predictions = model.predict(X)
 
 print("Visualizing predicted vs true values...")
-X["Plug_future"] = y
+X[target_col] = y
 dv.visualize_predicted_vs_true(X, predictions, anomalies=True, model_name=type(model).__name__)
 
 print("Unique predictions:")

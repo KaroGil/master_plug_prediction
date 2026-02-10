@@ -1,8 +1,16 @@
-import pandas as pd
+import yaml
 import numpy as np
+import pandas as pd
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
+non_feature_columns = cfg["data"]["non_feature_columns"]
 
 
-def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=42):
+def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=seed):
     rng = np.random.default_rng(random_state)
 
     X_df = pd.DataFrame(X) 
@@ -46,7 +54,7 @@ def add_time_derivative_features(df, time_col="Time"):
     time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  
 
     numeric_cols = df.select_dtypes(include=[np.number]).columns
-    numeric_cols = [col for col in numeric_cols if col not in ['Plug_future', 'Plug', 'Anomaly']]  # Exclude target columns
+    numeric_cols = [col for col in numeric_cols if col not in non_feature_columns]  # Exclude non-feature columns
 
     for col in numeric_cols:
         first_derivative = (df[col].diff() / time_diffs).replace([np.inf, -np.inf], np.nan)

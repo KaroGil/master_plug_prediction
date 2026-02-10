@@ -5,6 +5,16 @@ import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
+import yaml
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
+dataset_nr = cfg['data']['datasets']
+target_col = cfg["data"]["target"]
+
 
 def plot_feature_histograms(data, name=None):
     '''Histograms for each numeric feature'''
@@ -76,7 +86,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=None):
+def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -94,7 +104,7 @@ def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=
         plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
-    plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
+    plt.title(f"{target_col}=1 Events for {name}" if name else f"{target_col}=1 Events")
 
     if name == "Labled Dataset":
         import matplotlib.dates as mdates
@@ -121,9 +131,9 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
     plt.plot(df.index, df[pressure_col], label="Pump outlet pressure", alpha=0.5) if pressure_col in df.columns else None
 
-    # Highlight true Plug_future=1 events
+    # Highlight true target events
     if plotLabel:
-        plug_events = df[df["Plug_future"] == 1]
+        plug_events = df[df[target_col] == 1]
         plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5) 
         plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5) if pressure_col in df.columns else None
         
@@ -266,7 +276,7 @@ def plot_feature_importance(
     top_n: int = 25,
     scoring: str = "f1",
     n_repeats: int = 5,
-    random_state: int = 42,
+    random_state: int = seed,
     drop_cols: tuple[str, ...] = ("LogId",),
     figsize=(9, 7),
 ):
@@ -338,8 +348,11 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
      
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
-    if figureNum == 12:
-        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum} [used as test set]")
+
+    test_set_nr = max(dataset_nr)
+    dataset_nr.remove(test_set_nr)
+    if figureNum == test_set_nr:
+        plt.title(f"Data nr {figureNum} [test set]")
     else:
-        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}" if figureNum not in [3,5,8,11] else f"Predicted vs True Plug=1 Events for data nr {figureNum} [used for training]")
+        plt.title(f"Data nr {figureNum}" if figureNum not in dataset_nr else f"Data nr {figureNum} [training set]")
     plt.legend()

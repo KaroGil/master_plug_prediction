@@ -1,14 +1,19 @@
+import yaml
 import joblib
 import pandas as pd
-from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 from script.helper_methods.data_visualization import plot_one
 
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+target_col = cfg["data"]["target"]
+
 BASE_PATH = "data/labeled/labeled_"
 
-def predict_all(runId):
+def predict_all(runId, samples=200):
     # Load data
     print("💾 Loading multiple datasets for prediction...")
     data_list = []
@@ -40,7 +45,7 @@ def predict_all(runId):
     # Visualize 
     print("📊 Visualizing predicted vs true values...")
 
-    plt.figure(figsize=(12,6))
+    plt.figure(figsize=(20,18))
 
     for X_y_u, y_pred, i in zip(X_y_list, y_preds, range(1,len(X_y_list)+1)):
         plot_one(X_y_u[0], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
@@ -48,8 +53,10 @@ def predict_all(runId):
     plt.subplots_adjust(hspace=0.5)
     #show
     #plt.show()
-    plt.savefig(f"plots/{runId}.png", dpi=300, bbox_inches="tight")
+    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples")
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"plots/{runId}.png", dpi=300)
     plt.close()
 
 if __name__ == "__main__":
-    predict_all()
+    predict_all(runId="default_run", samples=200)
