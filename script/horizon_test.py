@@ -36,7 +36,6 @@ for horizon in horizons:
 
     predict_all(runId=f"{horizon}_samples", samples=horizon)
     print(f"\n\n=== SUMMARY OF SCORES FOR HORIZON {horizon} SAMPLES ===")
-    print("SCORESSSSSS", scores)
     if scores[horizon][0] > scores[horizon][1]:
         print("Model chosen RF")
     else: 
@@ -46,7 +45,6 @@ for horizon in horizons:
     print(f"Test: {scores[horizon][2]}")
 
 print("\n\n=== SUMMARY OF SCORES ===")
-print("SCORES!!!", scores)
 for horizon, score in scores.items():
     print(f"Horizon: {horizon} samples")
     if score[0] > score[1]:
