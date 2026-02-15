@@ -71,12 +71,15 @@ def create_future_target(df, horizon=200):
 
 def split_data(X,y):
     '''Split data into train, validation, and test sets without shuffling'''
-    
-    X_test = X.loc[X['LogId'] == X['LogId'].max()]
+    test_set_log_id = X['LogId'].max()
+    X_test = X.loc[X['LogId'] == test_set_log_id]
     y_test = y.loc[y.index.isin(X_test.index)]
     
-    X_train = X.loc[X['LogId'] != X['LogId'].max()]
+    X_train = X.loc[X['LogId'] != test_set_log_id]
     y_train = y.loc[y.index.isin(X_train.index)]
+
+    print(f"Train set LogIds: {X_train['LogId'].unique()}")
+    print(f"Test set LogIds: {X_test['LogId'].unique()}")
 
     return X_train, X_test, y_train, y_test
 
@@ -171,14 +174,6 @@ def preprocess_data(datasets, dataset_names, horizon=200, BASE_PATH = ""):
 
     X_train, to_drop = fr.remove_correlated_features(X_train, threshold=0.9)
     X_test = X_test.drop(columns=to_drop)
-    
-    print("Nans in X_train before filling:", X_train.isna().sum().sum())
-    
-    #drop any remaining NaN values
-    X_train.fillna(0,inplace=True)
-    X_test.fillna(0,inplace=True) 
-    y_train = y_train.loc[X_train.index]
-    y_test = y_test.loc[X_test.index]
     
     data_to_save = {
         'X_train': X_train,
