@@ -59,4 +59,4 @@ def predict_all(runId, samples=200):
     plt.close()
 
 if __name__ == "__main__":
-    predict_all(runId="default_run", samples=200)
+    predict_all(runId="default_run", samples=300)

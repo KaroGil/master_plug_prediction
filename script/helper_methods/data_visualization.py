@@ -349,10 +349,64 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
 
-    test_set_nr = max(dataset_nr)
-    dataset_nr.remove(test_set_nr)
+    dataset_nrs = list(dataset_nr)
+    test_set_nr = max(dataset_nrs)
+    train_set_nrs = [nr for nr in dataset_nrs if nr != test_set_nr]
+
     if figureNum == test_set_nr:
         plt.title(f"Data nr {figureNum} [test set]")
     else:
-        plt.title(f"Data nr {figureNum}" if figureNum not in dataset_nr else f"Data nr {figureNum} [training set]")
+        plt.title(f"Data nr {figureNum}" if figureNum not in train_set_nrs else f"Data nr {figureNum} [training set]")
     plt.legend()
+
+
+def plot_test_f1_vs_horizon(
+    horizons,
+    test_scores,
+    invert_xaxis=False,
+    figsize=(8,5)
+):
+    horizons = np.array(horizons)
+    test_scores = np.array(test_scores)
+
+    plt.figure(figsize=figsize)
+
+    plt.plot(horizons, test_scores,
+             marker="o", linewidth=2, label="Random Forest")
+
+    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.ylabel("F1 Score (Test Set)")
+    plt.title("Test F1 vs Prediction Horizon")
+    plt.legend()
+    plt.grid(True)
+
+    if invert_xaxis:
+        plt.gca().invert_xaxis()
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_test_f1_vs_horizon_bar(
+    horizons,
+    test_scores,
+    invert_xaxis=False,
+    figsize=(8,5)
+):
+    horizons = np.array(horizons)
+    test_scores = np.array(test_scores)
+
+    plt.figure(figsize=figsize)
+
+    plt.bar(horizons, test_scores, width=5, alpha=0.8)
+
+    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.ylabel("F1 Score (Test Set)")
+    plt.title("Test F1 vs Prediction Horizon")
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.xticks(horizons)
+
+    if invert_xaxis:
+        plt.gca().invert_xaxis()
+
+    plt.tight_layout()
+    plt.show()

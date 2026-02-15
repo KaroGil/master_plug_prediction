@@ -137,7 +137,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
     X_test = X_test.drop(columns=['LogId'])  # drop LogId for modeling
     y_test_pred = model.predict(X_test)
-    print(y_test_pred)
+
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
     f1_score_value = f1_score(y_test, y_test_pred, average='weighted')
