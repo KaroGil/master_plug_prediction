@@ -1,7 +1,14 @@
+import yaml
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
 
 def get_models_and_params(y):
     if len(np.unique(y)) == 1:
@@ -14,7 +21,7 @@ def get_models_and_params(y):
         )
     else:
         models = {
-            "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
+            "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=seed),
             "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight= np.sum(y == 0) / np.sum(y == 1)),
         }
 

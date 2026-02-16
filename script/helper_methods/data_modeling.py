@@ -1,7 +1,8 @@
 import os
-from imblearn import FunctionSampler
+import yaml
 import numpy as np
 import pandas as pd
+from imblearn import FunctionSampler
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report, f1_score, fbeta_score, make_scorer
@@ -10,6 +11,11 @@ from . import feature_engineering as fe
 from . import data_visualization as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
+
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -51,7 +57,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')
     }
 
-    X_train = X_train.drop(columns=['LogId'])  # drop LogId for modeling
+    X_train = X_train.drop(columns=['LogId']) #TODO
 
     pipe = make_pipeline(model)
 
@@ -61,7 +67,6 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
             "test pos:",  (y_train.iloc[te] == 1).sum()
         )
 
-    # Randomized Search with TSCV
     search = RandomizedSearchCV(
         estimator=pipe,
         param_distributions=params,
@@ -71,7 +76,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         cv=cv,
         n_jobs=-1,
         verbose=3,
-        random_state=42,
+        random_state=seed,
         error_score='raise',
         return_train_score=True
     )
@@ -80,9 +85,6 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
     print("\nBest parameters:", search.best_params_)
     idx = search.best_index_
-
-    # print("Train AP:", search.cv_results_['mean_train_ap'][idx])
-    # print("CV AP:", search.cv_results_['mean_test_ap'][idx])
 
     print("Train F1:", search.cv_results_['mean_train_F1-score'][idx])
     print("CV F1:", search.cv_results_['mean_test_F1-score'][idx])
@@ -108,7 +110,7 @@ def find_best_model(X_train, y_train):
             model,
             X_train, y_train,
             hyperparameters[name],
-            n_iter=3
+            n_iter=5
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 
@@ -135,11 +137,12 @@ def evaluate_model_on_test(model, X_test, y_test):
     '''Evaluate the final model on the test dataset'''
     X_test = X_test.drop(columns=['LogId'])  # drop LogId for modeling
     y_test_pred = model.predict(X_test)
-    print(y_test_pred)
+
     print("Test set results:")
     print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
-    print("F1 Score:", f1_score(y_test, y_test_pred, average='weighted'))
-    return y_test_pred
+    f1_score_value = f1_score(y_test, y_test_pred, average='weighted')
+    print("F1 Score:", f1_score_value)
+    return y_test_pred, f1_score_value
 
 
 def model_data(X_train, y_train, X_test, y_test):
@@ -158,5 +161,5 @@ def model_data(X_train, y_train, X_test, y_test):
     )
     print(imp)
    
-    y_test_pred = evaluate_model_on_test(best_model, X_test, y_test)
-    return best_model, y_test_pred
+    _, f1_score_value = evaluate_model_on_test(best_model, X_test, y_test)
+    return best_model, f1_score_value
