@@ -1,5 +1,13 @@
+import yaml
 import pandas as pd
 import numpy as np
+
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+target_col = cfg["data"]["target"]
 
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     """
@@ -50,7 +58,7 @@ def prep_window(df, features):
     X, y = make_windowed_Xy_stats(
     df=df,
     feature_cols=features,
-    label_col="Plug_future",
+    label_col=target_col,
     window=W
     )
 

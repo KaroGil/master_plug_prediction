@@ -5,6 +5,16 @@ import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
+import yaml
+
+# Load config
+with open("config.yaml") as f:
+    cfg = yaml.safe_load(f)
+
+seed = cfg["experiment"]["random_state"]
+dataset_nr = cfg['data']['datasets']
+target_col = cfg["data"]["target"]
+
 
 def plot_feature_histograms(data, name=None):
     '''Histograms for each numeric feature'''
@@ -76,7 +86,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=None):
+def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=None):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -94,7 +104,7 @@ def visualize_plug_event(data, plug_column="Plug_future", anomalies=False, name=
         plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
-    plt.title(f"Plug_future=1 Events for {name}" if name else "Plug_future=1 Events")
+    plt.title(f"{target_col}=1 Events for {name}" if name else f"{target_col}=1 Events")
 
     if name == "Labled Dataset":
         import matplotlib.dates as mdates
@@ -121,9 +131,9 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
     plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
     plt.plot(df.index, df[pressure_col], label="Pump outlet pressure", alpha=0.5) if pressure_col in df.columns else None
 
-    # Highlight true Plug_future=1 events
+    # Highlight true target events
     if plotLabel:
-        plug_events = df[df["Plug_future"] == 1]
+        plug_events = df[df[target_col] == 1]
         plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5) 
         plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5) if pressure_col in df.columns else None
         
@@ -266,7 +276,7 @@ def plot_feature_importance(
     top_n: int = 25,
     scoring: str = "f1",
     n_repeats: int = 5,
-    random_state: int = 42,
+    random_state: int = seed,
     drop_cols: tuple[str, ...] = ("LogId",),
     figsize=(9, 7),
 ):
@@ -307,14 +317,13 @@ def plot_feature_importance(
     imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
 
     # Plot
-    plt.figure(figsize=figsize)
-    plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
-    plt.title(title)
-    plt.xlabel("Importance")
-    plt.tight_layout()
-    plt.show()
+    # plt.figure(figsize=figsize)
+    # plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
+    # plt.title(title)
+    # plt.xlabel("Importance")
+    # plt.tight_layout()
+    #plt.show()
 
-    # Optional: print table (handy for copy/paste)
     return imp_df.reset_index(drop=True)
 
 
@@ -339,8 +348,67 @@ def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col
      
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
-    if figureNum == 12:
-        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum} [used as test set]")
+
+    dataset_nrs = list(dataset_nr)
+    test_set_nr = max(dataset_nrs)
+    train_set_nrs = [nr for nr in dataset_nrs if nr != test_set_nr]
+
+    if figureNum == test_set_nr:
+        plt.title(f"Data nr {figureNum} [test set]")
     else:
-        plt.title(f"Predicted vs True Plug=1 Events for data nr {figureNum}" if figureNum not in [3,5,8,11] else f"Predicted vs True Plug=1 Events for data nr {figureNum} [used for training]")
+        plt.title(f"Data nr {figureNum}" if figureNum not in train_set_nrs else f"Data nr {figureNum} [training set]")
     plt.legend()
+
+
+def plot_test_f1_vs_horizon(
+    horizons,
+    test_scores,
+    invert_xaxis=False,
+    figsize=(8,5)
+):
+    horizons = np.array(horizons)
+    test_scores = np.array(test_scores)
+
+    plt.figure(figsize=figsize)
+
+    plt.plot(horizons, test_scores,
+             marker="o", linewidth=2, label="Random Forest")
+
+    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.ylabel("F1 Score (Test Set)")
+    plt.title("Test F1 vs Prediction Horizon")
+    plt.legend()
+    plt.grid(True)
+
+    if invert_xaxis:
+        plt.gca().invert_xaxis()
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_test_f1_vs_horizon_bar(
+    horizons,
+    test_scores,
+    invert_xaxis=False,
+    figsize=(8,5)
+):
+    horizons = np.array(horizons)
+    test_scores = np.array(test_scores)
+
+    plt.figure(figsize=figsize)
+
+    x = np.arange(len(horizons)) 
+
+    plt.bar(x, test_scores, width=0.6, alpha=0.8)
+
+    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.ylabel("F1 Score (Test Set)")
+    plt.title("Test F1 vs Prediction Horizon")
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.xticks(x, horizons)
+
+    if invert_xaxis:
+        plt.gca().invert_xaxis()
+
+    plt.tight_layout()
+    plt.show()
