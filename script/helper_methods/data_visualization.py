@@ -397,13 +397,15 @@ def plot_test_f1_vs_horizon_bar(
 
     plt.figure(figsize=figsize)
 
-    plt.bar(horizons, test_scores, width=5, alpha=0.8)
+    x = np.arange(len(horizons)) 
+
+    plt.bar(x, test_scores, width=0.6, alpha=0.8)
 
     plt.xlabel("Prediction Horizon (s before plug)")
     plt.ylabel("F1 Score (Test Set)")
     plt.title("Test F1 vs Prediction Horizon")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
-    plt.xticks(horizons)
+    plt.xticks(x, horizons)
 
     if invert_xaxis:
         plt.gca().invert_xaxis()
