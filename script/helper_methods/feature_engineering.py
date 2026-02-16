@@ -205,6 +205,8 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
     df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
 
-    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
+
+
+    df["Plug_Index"] = np.maximum(df["dP_z"], 0) * np.maximum(df["dP_slope_z"], 0) *np.maximum(-df["flow_z"], 0)
 
     return df
