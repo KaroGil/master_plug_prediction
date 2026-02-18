@@ -5,11 +5,10 @@ import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
-import yaml
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 dataset_nr = cfg['data']['datasets']
@@ -137,7 +136,7 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
         plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5) 
         plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5) if pressure_col in df.columns else None
         
-    # Highlight anomalies
+    # Highlight anomalies TODO: remove if not using anomlay as a feature!!!
     if anomalies and ("Anomaly" in df.columns or "Anomaly_mean" in df.columns):
         anomaly_events = df[df["Anomaly"] == 1] if "Anomaly" in df.columns else df[df["Anomaly_mean"] == 1]
         plt.scatter(anomaly_events.index, anomaly_events[flow_col], color="purple", label="Anomaly (Flow)", zorder=6, marker='x') 
@@ -386,6 +385,7 @@ def plot_test_f1_vs_horizon(
     plt.tight_layout()
     plt.show()
 
+
 def plot_test_f1_vs_horizon_bar(
     horizons,
     test_scores,
@@ -400,6 +400,12 @@ def plot_test_f1_vs_horizon_bar(
     x = np.arange(len(horizons)) 
 
     plt.bar(x, test_scores, width=0.6, alpha=0.8)
+
+    best_score = np.max(test_scores)
+    plt.axhline(best_score, color="red", linestyle="--", linewidth=2)
+    plt.text(len(x)-0.5, best_score + 0.005,
+             f"Best: {best_score:.3f}",
+             color="red", ha="right")
 
     plt.xlabel("Prediction Horizon (s before plug)")
     plt.ylabel("F1 Score (Test Set)")

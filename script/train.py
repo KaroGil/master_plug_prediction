@@ -1,12 +1,12 @@
-import yaml
 import pandas as pd
 from script.helper_methods.data_modeling import model_data
 from script.helper_methods.data_preprocessing import preprocess_data
+from script.helper_methods.config import get_config
 
 LABLED_PATH = "data/labeled/labeled_"
 
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+# Load config
+cfg = get_config()
 
 dataset_nr = cfg['data']['datasets']
 

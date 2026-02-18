@@ -1,5 +1,4 @@
 import os
-import yaml
 import numpy as np
 import pandas as pd
 from imblearn import FunctionSampler
@@ -11,9 +10,10 @@ from . import feature_engineering as fe
 from . import data_visualization as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
+from script.helper_methods.config import get_config
 
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+# Load config
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 
@@ -78,7 +78,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         verbose=3,
         random_state=seed,
         error_score='raise',
-        return_train_score=True
+        return_train_score=True,
     )
 
     search.fit(X_train, y_train)
@@ -149,6 +149,7 @@ def model_data(X_train, y_train, X_test, y_test):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
     best_model = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
+
     save_model(best_model)
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
 

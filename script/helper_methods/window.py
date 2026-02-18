@@ -1,11 +1,11 @@
-import yaml
 import pandas as pd
 import numpy as np
 
+from .config import get_config
+
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 

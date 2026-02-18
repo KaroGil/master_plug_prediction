@@ -1,10 +1,9 @@
-import yaml
 import numpy as np
 import pandas as pd
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
@@ -207,6 +206,8 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
 
 
 
-    df["Plug_Index"] = np.maximum(df["dP_z"], 0) * np.maximum(df["dP_slope_z"], 0) *np.maximum(-df["flow_z"], 0)
+    #df["Plug_Index"] = np.maximum(df["dP_z"], 0) * np.maximum(df["dP_slope_z"], 0) *np.maximum(-df["flow_z"], 0)
+
+    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
 
     return df

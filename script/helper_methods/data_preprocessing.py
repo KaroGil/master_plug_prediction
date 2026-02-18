@@ -1,6 +1,5 @@
 # File extension imports
 import os
-import yaml
 import joblib
 import numpy as np
 import pandas as pd
@@ -10,11 +9,10 @@ from . import window as w
 from . import data_loader as dl
 from . import feature_reduction as fr
 from . import feature_engineering as fe
-
+from .config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
@@ -148,7 +146,7 @@ def feature_engineering_windowing(df, dataset_name="data1"):
     return X, y
 
 
-def preprocess_data(datasets, dataset_names, horizon=200, BASE_PATH = ""):
+def preprocess_data(datasets, dataset_names, horizon=100, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
 
     print(f"Processing data: {dataset_names[0]}")

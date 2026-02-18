@@ -1,12 +1,11 @@
-import yaml
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 

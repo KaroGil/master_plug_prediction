@@ -1,14 +1,13 @@
-import yaml
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 import joblib
 import sys
 import numpy as np
 import pandas as pd
 from script.helper_methods import data_visualization as dv
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 
