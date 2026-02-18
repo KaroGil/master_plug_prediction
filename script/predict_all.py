@@ -1,19 +1,19 @@
-import yaml
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 from script.helper_methods.data_visualization import plot_one
+from script.helper_methods.config import get_config
 
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+# Load config
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 
 BASE_PATH = "data/labeled/labeled_"
 
-def predict_all(runId, samples=200):
+def predict_all(runId, samples=100):
     # Load data
     print("💾 Loading multiple datasets for prediction...")
     data_list = []
@@ -53,10 +53,10 @@ def predict_all(runId, samples=200):
     plt.subplots_adjust(hspace=0.5)
     #show
     #plt.show()
-    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples")
+    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model["base_model"]).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/{runId}.png", dpi=300)
     plt.close()
 
 if __name__ == "__main__":
-    predict_all(runId="default_run", samples=300)
+    predict_all(runId="default_run")
