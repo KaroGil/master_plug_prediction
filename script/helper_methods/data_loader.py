@@ -1,5 +1,7 @@
-import pandas as pd
+import os
 import glob
+import joblib
+import pandas as pd
 
 def read_unify_data(path="../data/raw_data/data1/*.csv"):
     '''Read a CSV file with unified separator and decimal'''
@@ -100,3 +102,21 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
     for key, df in data.items():
         df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
     print(f"💾 Saved data with base name: {dataset_name}")
+
+
+def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
+    os.makedirs(base_path, exist_ok=True)
+
+    artifact = {
+        "X_train": data["X_train"],
+        "X_test": data["X_test"],
+        "y_train": data["y_train"],
+        "y_test": data["y_test"],
+        "feature_names": list(data["X_train"].columns),
+        "dataset_name": dataset_name,
+    }
+
+    path = os.path.join(base_path, f"{dataset_name}.joblib")
+    joblib.dump(artifact, path, compress=3)
+    print(f"💾 Saved dataset artifact: {path}")
+    return path

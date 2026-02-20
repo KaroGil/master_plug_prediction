@@ -182,10 +182,9 @@ def preprocess_data(datasets, dataset_names, horizon=100, BASE_PATH = ""):
     basePath = BASE_PATH + "data/processed_data/"
     print("DatasetNames", dataset_names)
     dataset_name = "data_" + "_".join(name[4:] for name in dataset_names)
+    artifact_path = dl.save_dataset_artifact(data_to_save, dataset_name, basePath)
+    joblib.dump({"artifact_path": artifact_path}, os.path.join(basePath, "LATEST.joblib"))
 
-    dl.save_data(data_to_save, dataset_name, base_path=basePath)
-
-    joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
     return X_train, X_test, y_train, y_test
 
@@ -193,7 +192,12 @@ def preprocess_data(datasets, dataset_names, horizon=100, BASE_PATH = ""):
 def preprocess_data_predict(df, dataset_name, horizon=200):
     '''Full preprocessing pipeline for prediction'''
 
-    FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
+    latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib"))
+    DATASET_PATH = latest["artifact_path"]
+
+    artifact = joblib.load(DATASET_PATH)
+
+    FEATURES = artifact["feature_names"]
 
     create_future_target(df, horizon=horizon)
 
