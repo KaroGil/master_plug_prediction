@@ -51,8 +51,10 @@ def predict_all(runId, samples=100):
         plot_one(X_y_u[0], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
 
     plt.subplots_adjust(hspace=0.5)
-    #show
+    # Show the plot
     #plt.show()
+
+    # Save the plot
     plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model["base_model"]).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/{runId}.png", dpi=300)

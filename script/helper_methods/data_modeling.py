@@ -16,6 +16,7 @@ from script.helper_methods.config import get_config
 cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
+n_iter = cfg["experiment"]["n_iter"]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -110,7 +111,7 @@ def find_best_model(X_train, y_train):
             model,
             X_train, y_train,
             hyperparameters[name],
-            n_iter=5
+            n_iter=n_iter
         )
         best_of_all_models[name] = (best_model, best_params, best_score)
 
