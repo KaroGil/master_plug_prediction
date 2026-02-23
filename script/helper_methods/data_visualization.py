@@ -97,10 +97,6 @@ def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=Non
     plug_events = data[data[plug_column] == 1]
     plt.scatter(plug_events.index, plug_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
 
-    # Highlight anomalies
-    if anomalies and "Anomaly" in data.columns:
-        anomaly_events = data[data["Anomaly"] == 1]
-        plt.scatter(anomaly_events.index, anomaly_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else anomaly_events["Flow rate (Mean)"], color="purple", label="Anomaly (Flow)", zorder=6, marker='x')
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"{target_col}=1 Events for {name}" if name else f"{target_col}=1 Events")
@@ -136,12 +132,6 @@ def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, pl
         plt.scatter(plug_events.index, plug_events[flow_col], color="red", label="Plug=1 (Flow)", zorder=5) 
         plt.scatter(plug_events.index, plug_events[pressure_col], color="orange", label="Plug=1 (Pressure)", zorder=5) if pressure_col in df.columns else None
         
-    # Highlight anomalies TODO: remove if not using anomlay as a feature!!!
-    if anomalies and ("Anomaly" in df.columns or "Anomaly_mean" in df.columns):
-        anomaly_events = df[df["Anomaly"] == 1] if "Anomaly" in df.columns else df[df["Anomaly_mean"] == 1]
-        plt.scatter(anomaly_events.index, anomaly_events[flow_col], color="purple", label="Anomaly (Flow)", zorder=6, marker='x') 
-        plt.scatter(anomaly_events.index, anomaly_events[pressure_col], color="brown", label="Anomaly (Pressure)", zorder=6, marker='x') if pressure_col in df.columns else None 
-
     # Highlight predicted Plug events
     plug_events = df[y_pred == 1]
     plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.') 
