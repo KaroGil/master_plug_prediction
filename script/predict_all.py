@@ -26,7 +26,8 @@ def predict_all(runId, samples=100):
     print("🛠️ Preprocessing datasets for prediction...")
     X_y_list = []
     for i, d in enumerate(data_list, 1):
-        X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i + 1 if i >= 2 else 1}"))
+        preped = preprocess_data_predict(d, dataset_name=f"data{i + 1 if i >= 2 else 1}")
+        X_y_list.append((preped[0], preped[1], d["Flow rate (Mean)"]))
 
     # Load model
     print("🔮 Loading model and making predictions...")
@@ -46,8 +47,11 @@ def predict_all(runId, samples=100):
     print("📊 Visualizing predicted vs true values...")
 
     plt.figure(figsize=(20,18))
-
+    print("POWERUWERWR")
+    print(X_y_list[0][0].shape)
+    print(X_y_list[0][2].shape)
     for X_y_u, y_pred, i in zip(X_y_list, y_preds, range(1,len(X_y_list)+1)):
+        X_y_u[0]["flow_rate"] =  X_y_u[2] # Add flow rate column to df, for visualization
         plot_one(X_y_u[0], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
 
     plt.subplots_adjust(hspace=0.5)
