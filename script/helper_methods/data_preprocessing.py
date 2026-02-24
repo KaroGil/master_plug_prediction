@@ -148,9 +148,9 @@ def feature_engineering_windowing(df, dataset_name="data1"):
 
 def preprocess_data(datasets, dataset_names, horizon=100, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
-
     print(f"Processing data: {dataset_names[0]}")
     create_future_target(datasets[0], horizon=horizon)
+
     X, y = feature_engineering_windowing(datasets[0], dataset_names[0])
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
@@ -177,7 +177,7 @@ def preprocess_data(datasets, dataset_names, horizon=100, BASE_PATH = ""):
         'X_train': X_train,
         'X_test': X_test,
         'y_train': y_train,
-        'y_test': y_test
+        'y_test': y_test,
     }
     basePath = BASE_PATH + "data/processed_data/"
     print("DatasetNames", dataset_names)
