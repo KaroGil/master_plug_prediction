@@ -70,6 +70,7 @@ def create_future_target(df, horizon=200):
 def split_data(X,y):
     '''Split data into train, validation, and test sets without shuffling'''
     test_set_log_id = X['LogId'].max()
+    print(f"All LogIds: {X['LogId'].unique()}")
     X_test = X.loc[X['LogId'] == test_set_log_id]
     y_test = y.loc[y.index.isin(X_test.index)]
     

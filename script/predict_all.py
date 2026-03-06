@@ -1,3 +1,5 @@
+import math
+
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,6 +12,7 @@ from script.helper_methods.config import get_config
 cfg = get_config()
 
 target_col = cfg["data"]["target"]
+datasets = cfg["data"]["datasets"]
 
 BASE_PATH = "data/labeled/labeled_"
 
@@ -17,16 +20,19 @@ def predict_all(runId, samples=100):
     # Load data
     print("💾 Loading multiple datasets for prediction...")
     data_list = []
-    for i in range(1, 13):
-        if i == 2:
-            continue  # Skip data2
+    dataset_ids = []
+    for i in datasets:
+        if i in [2, 18, 22]:
+            continue  # Skip data2, data18, data22
         data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
+        dataset_ids.append(i)
 
     # Preprocess 
     print("🛠️ Preprocessing datasets for prediction...")
     X_y_list = []
-    for i, d in enumerate(data_list, 1):
-        preped = preprocess_data_predict(d, dataset_name=f"data{i + 1 if i >= 2 else 1}")
+    for dataset_id, d in zip(dataset_ids, data_list):
+        print(f"🔢 Preprocessing dataset {dataset_id}...")
+        preped = preprocess_data_predict(d, dataset_name=f"data{dataset_id}")
         X_y_list.append((preped[0], preped[1], d["Flow rate (Mean)"]))
 
     # Load model
@@ -37,26 +43,26 @@ def predict_all(runId, samples=100):
     # Predict 
     print("🖨️ Making predictions on all datasets...")
     y_preds = []
-    for d in X_y_list:
-        prediction = model.predict(d[0])
+    for dataset_id, (X, y, _) in zip(dataset_ids, X_y_list):
+        prediction = model.predict(X)
         y_preds.append(prediction)
-        print(f"F1-score for this run was {f1_score(prediction, d[1])}")
+        print(f"F1-score for dataset {dataset_id} run was {f1_score(y, prediction, zero_division=0)}")
 
 
     # Visualize 
     print("📊 Visualizing predicted vs true values...")
 
-    plt.figure(figsize=(20,18))
-    print("POWERUWERWR")
-    print(X_y_list[0][0].shape)
-    print(X_y_list[0][2].shape)
-    for X_y_u, y_pred, i in zip(X_y_list, y_preds, range(1,len(X_y_list)+1)):
-        X_y_u[0]["flow_rate"] =  X_y_u[2] # Add flow rate column to df, for visualization
-        plot_one(X_y_u[0], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
+    n_plots = len(X_y_list)  
+    ncols = 5                
+    nrows = math.ceil(n_plots / ncols)
 
+    plt.figure(figsize=(4*ncols, 3.2*nrows))  
+
+    for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
+        X["flow_rate"] = flow
+        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id)
+   
     plt.subplots_adjust(hspace=0.5)
-    # Show the plot
-    #plt.show()
 
     # Save the plot
     plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model["base_model"]).__name__)}")
