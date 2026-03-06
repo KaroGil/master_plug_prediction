@@ -26,8 +26,10 @@ print("Model used: " + type(model).__name__ + " with parameters: " + str(model.g
 predictions = model.predict(X)
 
 print("Visualizing predicted vs true values...")
+X["flow_rate"] =  data["Flow rate (Mean)"] # Add flow rate column to df, for visualization
+
 X[target_col] = y
-dv.visualize_predicted_vs_true(X, predictions, anomalies=True, model_name=type(model).__name__)
+dv.visualize_predicted_vs_true(X, predictions, model_name=type(model).__name__)
 
 print("Unique predictions:")
 unique_vals, counts = np.unique(predictions, return_counts=True)

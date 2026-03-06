@@ -88,7 +88,7 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=None):
+def visualize_plug_event(data, plug_column=target_col, name=None, extra=False):
     '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
 
     plt.figure(figsize=(12,6))
@@ -99,6 +99,10 @@ def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=Non
     # Highlight Plug=1 events
     plug_events = data[data[plug_column] == 1]
     plt.scatter(plug_events.index, plug_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
+    
+    if extra:
+        #draw a horizontal line at flow rate = 600
+        plt.axhline(600, color="orange", linestyle="--", label="Flow rate = 600")
 
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
@@ -113,14 +117,17 @@ def visualize_plug_event(data, plug_column=target_col, anomalies=False, name=Non
     plt.show()
 
 
-def visualize_predicted_vs_true(df, y_pred, anomalies=False, model_name=None, plotLabel=True):
+def visualize_predicted_vs_true(df, y_pred, model_name=None, plotLabel=True):
     plt.figure(figsize=(12,6))
 
     flow_col = "Flow rate (Mean)"
     pressure_col = "Pump outlet pressure (Mean)"
 
     if flow_col not in df.columns:
-        flow_col = "Flow rate (Mean)_mean"
+        if "flow_rate" in df.columns:
+            flow_col = "flow_rate"
+        else:
+            flow_col = "Flow rate (Mean)_mean"
 
     if pressure_col not in df.columns:
         pressure_col = "Pump outlet pressure (Mean)_mean"
@@ -298,10 +305,8 @@ def plot_feature_importance(
             n_jobs=-1,
         )
         importances = pi.importances_mean
-        importances_std = pi.importances_std
         title = f"Permutation importance (scoring={scoring})"
     else:
-        importances_std = None
         title = "Model-based feature importance"
 
     # Build ranking table
@@ -309,58 +314,64 @@ def plot_feature_importance(
     imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
 
     # Plot
-    # plt.figure(figsize=figsize)
-    # plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
-    # plt.title(title)
-    # plt.xlabel("Importance")
-    # plt.tight_layout()
-    #plt.show()
+    plt.figure(figsize=figsize)
+    plt.barh(imp_df["feature"][::-1], imp_df["importance"][::-1])
+    plt.title(title)
+    plt.xlabel("Importance")
+    plt.tight_layout()
+    plt.show()
 
     return imp_df.reset_index(drop=True)
 
 
 ### VISUALIZING RESULTS FOR PREDICT_ALL ###
-def plot_one(df, y_pred, figureNum, y, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)"):
+def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)"):
     if flow_col not in df.columns:
-        #flow_col = "Flow rate (Mean)_mean"
         flow_col = "flow_rate"
     
     if pressure_col not in df.columns:
         pressure_candidates = df.columns[df.columns.str.contains("press", case=False, na=False)]
     
         if len(pressure_candidates) == 0:
-            raise ValueError("No pressure column found in dataframe.")
-        
-        # choose the first available pressure column
-        pressure_col = "TS outlet pressure (Mean)_std" if "TS outlet pressure (Mean)_std" in pressure_candidates else pressure_candidates[0]
-        pressure_col = "l"
+            pressure_col = None
+        elif "TS outlet pressure (Mean)_std" in pressure_candidates:
+            pressure_col = "TS outlet pressure (Mean)_std"
+        else:
+            pressure_col = pressure_candidates[0]
 
 
-    plt.subplot(4,3,figureNum)
-
-    plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5) if flow_col in df.columns else None
+    plt.subplot(nrows, ncols, figureNum)
+    
+    if flow_col in df.columns:
+        plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
 
     # Highlight true Plug events
     true_plug_events = df[y == 1]
-    plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x') if flow_col in df.columns else None
-    plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')  if pressure_col in df.columns else None
+    if flow_col in df.columns: 
+        plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+    if pressure_col in df.columns:
+        plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
     
     # Highlight predicted Plug events
     plug_events = df[y_pred == 1]
-    plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.') if flow_col in df.columns else None
-    plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  if pressure_col in df.columns else None
+    if flow_col in df.columns:
+        plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
+    if pressure_col in df.columns:
+        plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  
      
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
+
+    shown_id = dataset_id if dataset_id is not None else figureNum
 
     dataset_nrs = list(dataset_nr)
     test_set_nr = max(dataset_nrs)
     train_set_nrs = [nr for nr in dataset_nrs if nr != test_set_nr]
 
-    if figureNum == test_set_nr:
-        plt.title(f"Data nr {figureNum} [test set]")
+    if shown_id == test_set_nr:
+        plt.title(f"Data nr {shown_id} [test set]")
     else:
-        plt.title(f"Data nr {figureNum}" if figureNum not in train_set_nrs else f"Data nr {figureNum} [training set]")
+        plt.title(f"Data nr {shown_id}" if shown_id not in train_set_nrs else f"Data nr {shown_id} [training set]")
     plt.legend()
 
 
