@@ -18,7 +18,7 @@ datasets = []
 for i in dataset_nr:
     datasets.append(pd.read_csv(LABLED_PATH + f"data{i}.csv"))
 
-freq = 20 # Hz
+freq = 2 # Hz
 horizons = [5, 10, 15, 25, 50]  # seconds
 horizons = [h * freq for h in horizons]  # convert to number of samples
 print(f"Testing with horizons (in samples): {horizons}")

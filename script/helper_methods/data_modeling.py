@@ -43,7 +43,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')
     }
 
-    X_train = X_train.drop(columns=['LogId']) #TODO
+    X_train = X_train.drop(columns=['LogId']) # drop LogId for modeling
 
     for tr, te in cv:
         print(

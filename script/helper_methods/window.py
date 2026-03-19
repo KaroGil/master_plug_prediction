@@ -51,7 +51,7 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
 
 
 def prep_window(df, features):
-    FS = 20
+    FS = 2 # Hz
     WINDOW_S = 2
     W = FS * WINDOW_S
 
