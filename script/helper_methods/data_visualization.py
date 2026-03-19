@@ -13,6 +13,7 @@ cfg = get_config()
 seed = cfg["experiment"]["random_state"]
 dataset_nr = cfg['data']['datasets']
 target_col = cfg["data"]["target"]
+test_sets = cfg["data"]["test_sets"]
 
 
 def plot_feature_histograms(data, name=None):
@@ -48,7 +49,7 @@ def plot_feature_boxplots(data, name=None):
     plt.show()
 
 
-def visualize_flow_rate(data, key="Flow rate (Mean)", name=None):
+def visualize_key_column(data, key="Flow rate (Mean)", name=None):
     '''Visualize flow rate and pump outlet pressure over time'''
 
     if key not in data.columns:
@@ -88,33 +89,52 @@ def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None
     return fig
 
 
-def visualize_plug_event(data, plug_column=target_col, name=None, extra=False):
-    '''Visualize Plug=1 events on flow rate and pump outlet pressure'''
+def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", name=None, extra=False, ax=None):
+    import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(12,6))
+    possible_keys = [key, f"{key}_mean"]
+    actual_key = next((col for col in possible_keys if col in data.columns), None)
 
-    # Plot all data
-    plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else data["Flow rate (Mean)"], label="Flow rate", alpha=0.5)
+    if actual_key is None:
+        raise ValueError(f"None of these columns were found: {possible_keys}")
 
-    # Highlight Plug=1 events
+    created_figure = False
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        created_figure = True
+
+    x = data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index
+
+    # Plot signal
+    ax.plot(x, data[actual_key], label=actual_key, alpha=0.5)
+
+    # Plug events
     plug_events = data[data[plug_column] == 1]
-    plt.scatter(plug_events.index, plug_events["Flow rate (Mean)_mean"] if "Flow rate (Mean)_mean" in data.columns else plug_events["Flow rate (Mean)"], color="red", label=f"{plug_column}=1 (Flow)", zorder=5)
-    
+
+    if not plug_events.empty:
+        x_plug = plug_events["Elapsed_seconds"] if "Elapsed_seconds" in plug_events.columns else plug_events.index
+
+        ax.scatter(
+            x_plug,
+            plug_events[actual_key],
+            color="red",
+            label=f"{plug_column}=1",
+            zorder=5,
+            s=15
+        )
+
     if extra:
-        #draw a horizontal line at flow rate = 600
-        plt.axhline(600, color="orange", linestyle="--", label="Flow rate = 600")
+        ax.axhline(600, color="orange", linestyle="--", label="Threshold = 600")
 
-    plt.xlabel("Elapsed_seconds")
-    plt.ylabel("Value")
-    plt.title(f"{target_col}=1 Events for {name}" if name else f"{target_col}=1 Events")
+    ax.set_title(f"{name}" if name else actual_key)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Value")
+    ax.legend(fontsize=6)
 
-    if name == "Labled Dataset":
-        import matplotlib.dates as mdates
-        plt.xlabel("Timestamp")
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    if created_figure:
+        plt.tight_layout()
+        plt.show()
 
-    plt.legend()
-    plt.show()
 
 
 def visualize_predicted_vs_true(df, y_pred, model_name=None, plotLabel=True):
@@ -325,9 +345,12 @@ def plot_feature_importance(
 
 
 ### VISUALIZING RESULTS FOR PREDICT_ALL ###
-def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)"):
+def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)", show_flow=True):
     if flow_col not in df.columns:
         flow_col = "flow_rate"
+
+    if not show_flow:
+        flow_col = None
     
     if pressure_col not in df.columns:
         pressure_candidates = df.columns[df.columns.str.contains("press", case=False, na=False)]
@@ -339,20 +362,28 @@ def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col
         else:
             pressure_col = pressure_candidates[0]
 
+    # Determine if this dataset is part of training or test set for labeling the plot
+    shown_id = dataset_id if dataset_id is not None else figureNum
+    dataset_nrs = list(dataset_nr)
+    test_set_nr = max(dataset_nrs)
+    test_set_nrs = test_sets if test_sets else [test_set_nr]
+    train_set_nrs = [nr for nr in dataset_nrs if nr not in test_set_nrs]
 
+    # Create subplot
     plt.subplot(nrows, ncols, figureNum)
     
     if flow_col in df.columns:
         plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
 
-    # Highlight true Plug events
+    # Highlight true Plug events, on training data
     true_plug_events = df[y == 1]
-    if flow_col in df.columns: 
-        plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
-    if pressure_col in df.columns:
-        plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
+    if shown_id not in test_set_nrs:
+        if flow_col in df.columns: 
+            plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+        if pressure_col in df.columns:
+            plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
     
-    # Highlight predicted Plug events
+    # Highlight predicted Plug events, on all data
     plug_events = df[y_pred == 1]
     if flow_col in df.columns:
         plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
@@ -362,13 +393,7 @@ def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
 
-    shown_id = dataset_id if dataset_id is not None else figureNum
-
-    dataset_nrs = list(dataset_nr)
-    test_set_nr = max(dataset_nrs)
-    train_set_nrs = [nr for nr in dataset_nrs if nr != test_set_nr]
-
-    if shown_id == test_set_nr:
+    if shown_id in test_set_nrs:
         plt.title(f"Data nr {shown_id} [test set]")
     else:
         plt.title(f"Data nr {shown_id}" if shown_id not in train_set_nrs else f"Data nr {shown_id} [training set]")

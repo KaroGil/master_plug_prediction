@@ -13,17 +13,18 @@ cfg = get_config()
 
 target_col = cfg["data"]["target"]
 datasets = cfg["data"]["datasets"]
+horizon = cfg["experiment"]["horizon"]
 
 BASE_PATH = "data/labeled/labeled_"
 
-def predict_all(runId, samples=100):
+def predict_all(runId, samples=horizon):
     # Load data
     print("💾 Loading multiple datasets for prediction...")
     data_list = []
     dataset_ids = []
     for i in datasets:
-        if i in [2, 18, 22]:
-            continue  # Skip data2, data18, data22
+        if i in [2]:
+            continue  # Skip data2
         data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
         dataset_ids.append(i)
 
@@ -60,12 +61,12 @@ def predict_all(runId, samples=100):
 
     for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
         X["flow_rate"] = flow
-        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id)
+        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow={dataset_id not in [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 25]})
    
     plt.subplots_adjust(hspace=0.5)
 
     # Save the plot
-    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model["base_model"]).__name__)}")
+    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/{runId}.png", dpi=300)
     plt.close()

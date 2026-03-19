@@ -43,20 +43,50 @@ def standardize_column_names(df):
     df = df.rename(columns=COLUMN_RENAME_MAP)
     return df
 
-def load_raw_data(path="../data/raw_data/data1/*.csv"):
+def parse_time_column(time_column):
+    s = time_column.astype(str).str.strip()
+
+    valid = s[s.notna() & (s != '')]
+    if valid.empty:
+        return pd.to_datetime(s, errors="coerce")
+
+    first_valid = valid.iloc[0]
+    s = s.str.replace(",", ".", regex=False)
+
+    # Full datetime
+    if " " in first_valid:
+        if "/" in first_valid:
+            return pd.to_datetime(s, format="%m/%d/%Y %H:%M:%S.%f", errors="coerce")
+        else:
+            return pd.to_datetime(s, format="%d.%m.%Y %H:%M:%S.%f", errors="coerce")
+
+    # Date only
+    if ":" not in first_valid:
+        if "/" in first_valid:
+            return pd.to_datetime(s, format="%m/%d/%Y", errors="coerce")
+        else:
+            return pd.to_datetime(s, format="%d.%m.%Y", errors="coerce")
+
+    # Time only
+    return pd.to_datetime(s, format="%H:%M:%S.%f", errors="coerce")
+
+
+def load_raw_data(path="../data/raw_data/data1/*.csv", reconstruct_time=False, start_time=None, freq_Hz=2):
     '''Load and concatenate CSV files from a given path'''
 
     files = sorted(glob.glob(path))
-    
     df_list = [read_unify_data(f) for f in files]
-
     df = pd.concat(df_list)
 
-    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
+    if reconstruct_time:
+        if start_time is None:
+            start_time = "1900-01-01 00:00:00"
+        else:
+            start_time = pd.Timestamp(start_time)
 
-    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
-
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
+        df["Time"] = pd.date_range(start=start_time, periods=len(df), freq = f"{int(10000 / freq_Hz)}ms")
+    else:
+        df["Time"] = parse_time_column(df["Time"])
 
     df.set_index('Time', inplace=True)
     df.sort_index(inplace=True)
@@ -77,12 +107,8 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
     df = pd.concat(df_list)
 
-    df['Time'] = df['Time'].str.split(' ').str[1] if ' ' in df['Time'].iloc[0] else df['Time']
+    df["Time"] = parse_time_column(df["Time"])
 
-    df['Time'] = df['Time'].str.replace(',', '.', regex=False)
-
-    df['Time'] = pd.to_datetime(df['Time'], format="%H:%M:%S.%f")
-    
     # Sort by Time 
     df.set_index('Time', inplace=True)
     df.sort_index(inplace=True)
