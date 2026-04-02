@@ -1,32 +1,41 @@
-import yaml
+import math
+
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 from script.helper_methods.data_visualization import plot_one
+from script.helper_methods.config import get_config
 
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+# Load config
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
+datasets = cfg["data"]["datasets"]
+horizon = cfg["experiment"]["horizon"]
+flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
 
 BASE_PATH = "data/labeled/labeled_"
 
-def predict_all(runId, samples=200):
+def predict_all(runId, samples=horizon):
     # Load data
     print("💾 Loading multiple datasets for prediction...")
     data_list = []
-    for i in range(1, 13):
-        if i == 2:
+    dataset_ids = []
+    for i in datasets:
+        if i in [2]:
             continue  # Skip data2
         data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
+        dataset_ids.append(i)
 
     # Preprocess 
     print("🛠️ Preprocessing datasets for prediction...")
     X_y_list = []
-    for i, d in enumerate(data_list, 1):
-        X_y_list.append(preprocess_data_predict(d, dataset_name=f"data{i + 1 if i >= 2 else 1}"))
+    for dataset_id, d in zip(dataset_ids, data_list):
+        print(f"🔢 Preprocessing dataset {dataset_id}...")
+        preped = preprocess_data_predict(d, dataset_name=f"data{dataset_id}")
+        X_y_list.append((preped[0], preped[1], d["Flow rate (Mean)"]))
 
     # Load model
     print("🔮 Loading model and making predictions...")
@@ -36,27 +45,34 @@ def predict_all(runId, samples=200):
     # Predict 
     print("🖨️ Making predictions on all datasets...")
     y_preds = []
-    for d in X_y_list:
-        prediction = model.predict(d[0])
+    for dataset_id, (X, y, _) in zip(dataset_ids, X_y_list):
+        prediction = model.predict(X)
         y_preds.append(prediction)
-        print(f"F1-score for this run was {f1_score(prediction, d[1])}")
+        print(f"F1-score for dataset {dataset_id} run was {f1_score(y, prediction, zero_division=0)}")
 
 
     # Visualize 
     print("📊 Visualizing predicted vs true values...")
 
-    plt.figure(figsize=(20,18))
+    n_plots = len(X_y_list)  
+    ncols = 5                
+    nrows = math.ceil(n_plots / ncols)
 
-    for X_y_u, y_pred, i in zip(X_y_list, y_preds, range(1,len(X_y_list)+1)):
-        plot_one(X_y_u[0], y_pred, i + 1 if i >= 2 else 1, X_y_u[1])
+    plt.figure(figsize=(4*ncols, 3.2*nrows))  
 
+    for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
+        X["flow_rate"] = flow
+        print(f"Dataset {dataset_id} has flow rate missing: {dataset_id in flow_rate_missing_sets}")
+        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
+   
     plt.subplots_adjust(hspace=0.5)
-    #show
-    #plt.show()
-    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples")
+
+    # Save the plot
+    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/{runId}.png", dpi=300)
+    print(f"Plot saved as plots/{runId}.png")
     plt.close()
 
 if __name__ == "__main__":
-    predict_all(runId="default_run", samples=300)
+    predict_all(runId="default_run")

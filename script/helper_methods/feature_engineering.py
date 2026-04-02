@@ -1,10 +1,9 @@
-import yaml
 import numpy as np
 import pandas as pd
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
@@ -165,15 +164,15 @@ def feature_engineering_pipeline(df):
     Apply a series of feature engineering steps to the DataFrame.
     """
     df = df.copy()
-
+    
     # Physics-based features
     df = pressure_drop_feature(df)
-    df = normlized_pressure_drop_feature(df)
+    #df = normlized_pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
-    df = flow_path_openess_feature(df)
-    df = flow_pressure_response_feature(df)
-    df = ts_temperature_rise(df)
-    df = ts_bypass_difference(df)
+    #df = flow_path_openess_feature(df)
+    #df = flow_pressure_response_feature(df)
+    #df = ts_temperature_rise(df)
+    #df = ts_bypass_difference(df)
 
     return df
 
@@ -203,8 +202,12 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
 
     df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
-    df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
+    #df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
 
-    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
+
+
+    #df["Plug_Index"] = np.maximum(df["dP_z"], 0) * np.maximum(df["dP_slope_z"], 0) *np.maximum(-df["flow_z"], 0)
+
+    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] #- df["flow_z"]
 
     return df

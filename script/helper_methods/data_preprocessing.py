@@ -1,6 +1,5 @@
 # File extension imports
 import os
-import yaml
 import joblib
 import numpy as np
 import pandas as pd
@@ -10,14 +9,15 @@ from . import window as w
 from . import data_loader as dl
 from . import feature_reduction as fr
 from . import feature_engineering as fe
-
+from .config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
+horizon = cfg["experiment"]["horizon"]
+test_sets = cfg["data"]["test_sets"]
 
 # Define paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -62,7 +62,7 @@ def create_target_column(df, flow_thresh=0.9, pressure_thresh=1.3, thresholds=['
         df["Plug"] = np.where((pressure_plug), 1, df["Plug"])
 
 
-def create_future_target(df, horizon=200):
+def create_future_target(df, horizon=horizon):
     '''Create target column 'Plug_future' by shifting 'Plug' column'''
 
     df[target_col] = (df['Plug'].shift(-1).rolling(window=horizon, min_periods=1).max())
@@ -71,11 +71,19 @@ def create_future_target(df, horizon=200):
 
 def split_data(X,y):
     '''Split data into train, validation, and test sets without shuffling'''
-    test_set_log_id = X['LogId'].max()
+
+    if test_sets:
+            test_set_log_id = test_sets[-1] # Use the last test set specified in config
+    else:
+        test_set_log_id = X['LogId'].max()
     X_test = X.loc[X['LogId'] == test_set_log_id]
     y_test = y.loc[y.index.isin(X_test.index)]
     
-    X_train = X.loc[X['LogId'] != test_set_log_id]
+    if test_sets: 
+        X_train = X.loc[~X['LogId'].isin(test_sets)]
+    else: 
+        X_train = X.loc[X['LogId'] != test_set_log_id]
+    
     y_train = y.loc[y.index.isin(X_train.index)]
 
     print(f"Train set LogIds: {X_train['LogId'].unique()}")
@@ -148,11 +156,11 @@ def feature_engineering_windowing(df, dataset_name="data1"):
     return X, y
 
 
-def preprocess_data(datasets, dataset_names, horizon=200, BASE_PATH = ""):
+def preprocess_data(datasets, dataset_names, horizon=horizon, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
-
     print(f"Processing data: {dataset_names[0]}")
     create_future_target(datasets[0], horizon=horizon)
+
     X, y = feature_engineering_windowing(datasets[0], dataset_names[0])
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
@@ -179,23 +187,27 @@ def preprocess_data(datasets, dataset_names, horizon=200, BASE_PATH = ""):
         'X_train': X_train,
         'X_test': X_test,
         'y_train': y_train,
-        'y_test': y_test
+        'y_test': y_test,
     }
     basePath = BASE_PATH + "data/processed_data/"
     print("DatasetNames", dataset_names)
     dataset_name = "data_" + "_".join(name[4:] for name in dataset_names)
+    artifact_path = dl.save_dataset_artifact(data_to_save, dataset_name, basePath)
+    joblib.dump({"artifact_path": artifact_path}, os.path.join(basePath, "LATEST.joblib"))
 
-    dl.save_data(data_to_save, dataset_name, base_path=basePath)
-
-    joblib.dump(X_train.columns.tolist(), FEATURES_PATH)
 
     return X_train, X_test, y_train, y_test
 
 
-def preprocess_data_predict(df, dataset_name, horizon=200):
+def preprocess_data_predict(df, dataset_name, horizon=horizon):
     '''Full preprocessing pipeline for prediction'''
 
-    FEATURES = joblib.load(open(FEATURES_PATH, "rb"))
+    latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib"))
+    DATASET_PATH = latest["artifact_path"]
+
+    artifact = joblib.load(DATASET_PATH)
+
+    FEATURES = artifact["feature_names"]
 
     create_future_target(df, horizon=horizon)
 

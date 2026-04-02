@@ -1,11 +1,11 @@
-import yaml
 import pandas as pd
 import numpy as np
 
+from .config import get_config
+
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 target_col = cfg["data"]["target"]
 
@@ -51,7 +51,7 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
 
 
 def prep_window(df, features):
-    FS = 20
+    FS = 2 # Hz
     WINDOW_S = 2
     W = FS * WINDOW_S
 

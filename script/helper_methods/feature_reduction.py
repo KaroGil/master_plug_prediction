@@ -1,13 +1,12 @@
 import os
 import shap
-import yaml
 import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from script.helper_methods.config import get_config
 
 # Load config
-with open("config.yaml") as f:
-    cfg = yaml.safe_load(f)
+cfg = get_config()
 
 seed = cfg["experiment"]["random_state"]
 always_keep_columns = cfg["data"]["always_keep_columns"]
@@ -92,7 +91,7 @@ def remove_shap_low_importance_features(X, selected):
     return X.loc[:, selected]
 
 
-def remove_correlated_features(X, threshold=0.9):
+def remove_correlated_features(X, threshold=0.9): #TODO: try what happens if i dont remove the first intsace of a redundant feature, but the feature that has lower correlation with the target variable 
     '''Remove highly correlated features based on a correlation threshold'''
 
     corr_matrix = X.corr().abs()
