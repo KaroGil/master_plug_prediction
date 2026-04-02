@@ -10,6 +10,8 @@ from script.helper_methods.config import get_config
 cfg = get_config()
 
 target_col = cfg["data"]["target"]
+flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
+
 
 BASE_PATH = "data/labeled/labeled_"
 
@@ -29,7 +31,7 @@ print("Visualizing predicted vs true values...")
 X["flow_rate"] =  data["Flow rate (Mean)"] # Add flow rate column to df, for visualization
 
 X[target_col] = y
-dv.visualize_predicted_vs_true(X, predictions, model_name=type(model).__name__)
+dv.visualize_predicted_vs_true(X, predictions, model_name=type(model).__name__, flow_rate_missing=(csv_file in flow_rate_missing_sets))
 
 print("Unique predictions:")
 unique_vals, counts = np.unique(predictions, return_counts=True)

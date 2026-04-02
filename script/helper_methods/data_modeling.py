@@ -145,14 +145,14 @@ def model_data(X_train, y_train, X_test, y_test):
     save_model(best_model)
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
 
-    imp = dv.plot_feature_importance(
-        best_model,
-        X_train,
-        y_train,
-        method="permutation",
-        top_n=20
-    )
-    print(imp)
+    # imp = dv.plot_feature_importance(
+    #     best_model,
+    #     X_train,
+    #     y_train,
+    #     method="permutation",
+    #     top_n=20
+    # )
+    # print(imp)
    
     _, f1_score_value = evaluate_model_on_test(best_model, X_test, y_test)
     return best_model, f1_score_value
