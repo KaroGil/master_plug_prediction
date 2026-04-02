@@ -14,6 +14,7 @@ cfg = get_config()
 target_col = cfg["data"]["target"]
 datasets = cfg["data"]["datasets"]
 horizon = cfg["experiment"]["horizon"]
+flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
 
 BASE_PATH = "data/labeled/labeled_"
 
@@ -61,7 +62,8 @@ def predict_all(runId, samples=horizon):
 
     for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
         X["flow_rate"] = flow
-        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow={dataset_id not in [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 25]})
+        print(f"Dataset {dataset_id} has flow rate missing: {dataset_id in flow_rate_missing_sets}")
+        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
    
     plt.subplots_adjust(hspace=0.5)
 
@@ -69,6 +71,7 @@ def predict_all(runId, samples=horizon):
     plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(f"plots/{runId}.png", dpi=300)
+    print(f"Plot saved as plots/{runId}.png")
     plt.close()
 
 if __name__ == "__main__":

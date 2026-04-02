@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -10,7 +11,7 @@ cfg = get_config()
 seed = cfg["experiment"]["random_state"]
 
 def get_models_and_params(y):
-    if len(np.unique(y)) == 1:
+    if len(np.unique(y)) == 1: #Fallback
         print("⚠️  Only one class present.")
         return (
             {"Dummy": DummyClassifier()},
@@ -22,7 +23,7 @@ def get_models_and_params(y):
         models = {
             "Dummy": DummyClassifier(strategy="most_frequent", random_state=seed),
             "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=seed),
-            "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight= np.sum(y == 0) / np.sum(y == 1)),
+            "XGBoost": XGBClassifier(eval_metric='logloss', scale_pos_weight= np.sum(y == 0) / np.sum(y == 1))
         }
 
         hyperparameters = {
