@@ -85,21 +85,21 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
     return df
 
 #TODO
-def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
-    """
-    Calculate normalized pressure drop across the pump as a feature.
-    Normalized ΔP = (P_outlet - P_inlet) / P_inlet
-    """
-    df["TS_in_changed_out"] = 0
+# def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
+#     """
+#     Calculate normalized pressure drop across the pump as a feature.
+#     Normalized ΔP = (P_outlet - P_inlet) / P_inlet
+#     """
+#     df["TS_in_changed_out"] = 0
 
-    if inlet_col not in df.columns:
-        inlet_col = "Pump outlet pressure (Mean)"
-        df["TS_in_changed_out"] = 1
+#     if inlet_col not in df.columns:
+#         inlet_col = "Pump outlet pressure (Mean)"
+#         df["TS_in_changed_out"] = 1
 
         
-    df["Normalized_Pressure_Drop"] = (df[outlet_col] - df[inlet_col]) / (df[flow_col] + 1e-6)  
+#     df["Normalized_Pressure_Drop"] = (df[outlet_col] - df[inlet_col]) / (df[flow_col] + 1e-6)  
 
-    return df
+#     return df
 
 def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_col="Pump outlet pressure (Mean)", clip=1e4):
     """
@@ -115,48 +115,48 @@ def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_c
 
 
 ## Flow-pressure interaction feature
-#TODO
-def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
-    """
-    Calculate flow path openness as a feature.
-    Openness = Q / ΔP
-    Higher values indicate more open flow paths, while lower values suggest constriction.
-    """
-    df["Flow_Path_Openness"] = df[flow_col] / (df[ts_pressure_col] + 1e-6)  
+# #TODO
+# def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
+#     """
+#     Calculate flow path openness as a feature.
+#     Openness = Q / ΔP
+#     Higher values indicate more open flow paths, while lower values suggest constriction.
+#     """
+#     df["Flow_Path_Openness"] = df[flow_col] / (df[ts_pressure_col] + 1e-6)  
 
-    return df
+#     return df
 
-#TODO
-def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
-    """
-    Calculates the flow-pressure response feature, which captures how changes in flow rate affect pressure.
-    Response = dP/dQ (change in pressure per unit change in flow)
-    """
-    df["Flow_Pressure_Response"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
-    return df
+# #TODO
+# def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
+#     """
+#     Calculates the flow-pressure response feature, which captures how changes in flow rate affect pressure.
+#     Response = dP/dQ (change in pressure per unit change in flow)
+#     """
+#     df["Flow_Pressure_Response"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
+#     return df
 
 
-### Temperature-based derived features
-#TODO
-def ts_temperature_rise(df, inlet_temp_col="Temperature TS inlet (Mean)", outlet_temp_col="Temperature TS outlet (Mean)"):
-    """
-    Calculate temperature rise across the system as a feature.
-    ΔT = T_outlet - T_inlet
-    """
+# ### Temperature-based derived features
+# #TODO
+# def ts_temperature_rise(df, inlet_temp_col="Temperature TS inlet (Mean)", outlet_temp_col="Temperature TS outlet (Mean)"):
+#     """
+#     Calculate temperature rise across the system as a feature.
+#     ΔT = T_outlet - T_inlet
+#     """
 
-    df["Temperature_Rise"] = df[outlet_temp_col] - df[inlet_temp_col]
+#     df["Temperature_Rise"] = df[outlet_temp_col] - df[inlet_temp_col]
 
-    return df
+#     return df
 
-#TODO
-def ts_bypass_difference(df, inlet_temp_col="Temperature TS inlet (Mean)", bypass_temp_col="Bypass temperature (Mean)"):
-    """
-    Calculate temperature difference between TS inlet and bypass as a feature.
-    ΔT_bypass = T_inlet - T_bypass
-    """
-    df["TS_Bypass_Temp_Diff"] = df[inlet_temp_col] - df[bypass_temp_col]
+# #TODO
+# def ts_bypass_difference(df, inlet_temp_col="Temperature TS inlet (Mean)", bypass_temp_col="Bypass temperature (Mean)"):
+#     """
+#     Calculate temperature difference between TS inlet and bypass as a feature.
+#     ΔT_bypass = T_inlet - T_bypass
+#     """
+#     df["TS_Bypass_Temp_Diff"] = df[inlet_temp_col] - df[bypass_temp_col]
 
-    return df
+#     return df
 
 
 def feature_engineering_pipeline(df):
@@ -165,10 +165,12 @@ def feature_engineering_pipeline(df):
     """
     df = df.copy()
     
-    # Physics-based features TODO
+    # Combined features
     df = pressure_drop_feature(df)
-    #df = normlized_pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
+    
+    #TODO
+    #df = normlized_pressure_drop_feature(df)
     #df = flow_path_openess_feature(df)
     #df = flow_pressure_response_feature(df)
     #df = ts_temperature_rise(df)
