@@ -8,39 +8,39 @@ cfg = get_config()
 seed = cfg["experiment"]["random_state"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
 
+# TODO
+# def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=seed):
+#     rng = np.random.default_rng(random_state)
 
-def augment_minority_continuous_timeseries(X, y, n_augmentations=3, noise_frac=0.01, random_state=seed):
-    rng = np.random.default_rng(random_state)
+#     X_df = pd.DataFrame(X) 
+#     y_ser = pd.Series(y).reset_index(drop=True)
 
-    X_df = pd.DataFrame(X) 
-    y_ser = pd.Series(y).reset_index(drop=True)
+#     if y_ser.nunique() < 2:
+#         return X_df, y_ser
 
-    if y_ser.nunique() < 2:
-        return X_df, y_ser
+#     X_min = X_df[y_ser == 1]
+#     y_min = y_ser[y_ser == 1]
 
-    X_min = X_df[y_ser == 1]
-    y_min = y_ser[y_ser == 1]
+#     # If a fold happens to have no minority, do nothing
+#     if len(X_min) == 0:
+#         return X_df, y_ser
 
-    # If a fold happens to have no minority, do nothing
-    if len(X_min) == 0:
-        return X_df, y_ser
+#     std = X_min.std(axis=0).to_numpy()
+#     std = np.where(np.isfinite(std), std, 0.0)
 
-    std = X_min.std(axis=0).to_numpy()
-    std = np.where(np.isfinite(std), std, 0.0)
+#     X_aug_parts = [X_df]
+#     y_aug_parts = [y_ser]
 
-    X_aug_parts = [X_df]
-    y_aug_parts = [y_ser]
+#     for _ in range(n_augmentations):
+#         noise = rng.normal(loc=0.0, scale=noise_frac * std, size=X_min.shape)
+#         X_noisy = X_min.to_numpy() + noise
+#         X_aug_parts.append(pd.DataFrame(X_noisy, columns=X_df.columns))
+#         y_aug_parts.append(y_min)
 
-    for _ in range(n_augmentations):
-        noise = rng.normal(loc=0.0, scale=noise_frac * std, size=X_min.shape)
-        X_noisy = X_min.to_numpy() + noise
-        X_aug_parts.append(pd.DataFrame(X_noisy, columns=X_df.columns))
-        y_aug_parts.append(y_min)
+#     X_out = pd.concat(X_aug_parts, ignore_index=True)
+#     y_out = pd.concat(y_aug_parts, ignore_index=True)
 
-    X_out = pd.concat(X_aug_parts, ignore_index=True)
-    y_out = pd.concat(y_aug_parts, ignore_index=True)
-
-    return X_out, y_out
+#     return X_out, y_out
 
 
 # Derivatives (d/dt) + (d2/dt2)
@@ -84,7 +84,7 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
 
     return df
 
-
+#TODO
 def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
     """
     Calculate normalized pressure drop across the pump as a feature.
@@ -115,7 +115,7 @@ def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_c
 
 
 ## Flow-pressure interaction feature
-
+#TODO
 def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
     """
     Calculate flow path openness as a feature.
@@ -126,7 +126,7 @@ def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="
 
     return df
 
-
+#TODO
 def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
     """
     Calculates the flow-pressure response feature, which captures how changes in flow rate affect pressure.
@@ -137,7 +137,7 @@ def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pu
 
 
 ### Temperature-based derived features
-
+#TODO
 def ts_temperature_rise(df, inlet_temp_col="Temperature TS inlet (Mean)", outlet_temp_col="Temperature TS outlet (Mean)"):
     """
     Calculate temperature rise across the system as a feature.
@@ -148,7 +148,7 @@ def ts_temperature_rise(df, inlet_temp_col="Temperature TS inlet (Mean)", outlet
 
     return df
 
-
+#TODO
 def ts_bypass_difference(df, inlet_temp_col="Temperature TS inlet (Mean)", bypass_temp_col="Bypass temperature (Mean)"):
     """
     Calculate temperature difference between TS inlet and bypass as a feature.
@@ -165,7 +165,7 @@ def feature_engineering_pipeline(df):
     """
     df = df.copy()
     
-    # Physics-based features
+    # Physics-based features TODO
     df = pressure_drop_feature(df)
     #df = normlized_pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
@@ -202,12 +202,13 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
 
     df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
-    #df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
+    
+    if flow_col in df.columns: #If flow rate is included in training, also include it in the plug index calculation
+        df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
 
+        df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
 
-
-    #df["Plug_Index"] = np.maximum(df["dP_z"], 0) * np.maximum(df["dP_slope_z"], 0) *np.maximum(-df["flow_z"], 0)
-
-    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] #- df["flow_z"]
+    else:
+        df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] 
 
     return df

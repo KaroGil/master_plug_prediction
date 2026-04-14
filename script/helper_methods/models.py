@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier

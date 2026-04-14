@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd  
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn import base
 from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
@@ -552,7 +551,10 @@ def plot_test_f1_vs_horizon(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
-    plt.show()
+    #plt.show() TODO Test this
+
+    plt.savefig("/plots/horizon_test/f1_scores_line_plot.png", dpi=300)
+    plt.close()
 
 
 def plot_test_f1_vs_horizon_bar(
@@ -575,6 +577,9 @@ def plot_test_f1_vs_horizon_bar(
     plt.text(len(x)-0.5, best_score + 0.005,
              f"Best: {best_score:.3f}",
              color="red", ha="right")
+    
+    for i in range(len(x)):
+        plt.text(i, test_scores[i] // 2, f"{test_scores[i]:.3f}", ha='center')
 
     plt.xlabel("Prediction Horizon (s before plug)")
     plt.ylabel("F1 Score (Test Set)")
@@ -586,4 +591,6 @@ def plot_test_f1_vs_horizon_bar(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
-    plt.show()
+    #plt.show() TODO Test this
+    plt.savefig("/plots/horizon_test/f1_scores_bar_plot.png", dpi=300)
+    plt.close()

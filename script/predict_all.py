@@ -45,14 +45,29 @@ def predict_all(runId, samples=horizon):
     # Predict 
     print("🖨️ Making predictions on all datasets...")
     y_preds = []
+    f1scores = []
     for dataset_id, (X, y, _) in zip(dataset_ids, X_y_list):
         prediction = model.predict(X)
         y_preds.append(prediction)
-        print(f"F1-score for dataset {dataset_id} run was {f1_score(y, prediction, zero_division=0)}")
+        f1 = f1_score(y, prediction, zero_division=0)
+        f1scores.append(f1)
+        print(f"F1-score for dataset {dataset_id} run was {f1}")
 
+    # Visualize predictions as bar plot
+    print("📊 Visualizing f1-scores as bar plots...")
+    plt.figure(figsize=(8, 5))
+    plt.bar([str(id) for id in dataset_ids], f1scores, color='skyblue')
+    plt.xlabel('Dataset ID')
+    plt.ylabel('F1 Score')
+    plt.title(f'F1 Scores for Predicted vs True {target_col}=1 Events')
+    plt.ylim(0, 1)
+    plt.savefig(f"plots/f1_scores_{runId}.png", dpi=300)
+    print(f"F1 score plot saved as plots/f1_scores_{runId}.png")
+    plt.close()
 
-    # Visualize 
+    # Visualize as true vs predicted events line plots
     print("📊 Visualizing predicted vs true values...")
+    print(f"Datasets with flow rate missing: {flow_rate_missing_sets}")
 
     n_plots = len(X_y_list)  
     ncols = 5                
@@ -62,7 +77,6 @@ def predict_all(runId, samples=horizon):
 
     for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
         X["flow_rate"] = flow
-        print(f"Dataset {dataset_id} has flow rate missing: {dataset_id in flow_rate_missing_sets}")
         plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
    
     plt.subplots_adjust(hspace=0.5)

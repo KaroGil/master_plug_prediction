@@ -91,7 +91,7 @@ def remove_shap_low_importance_features(X, selected):
     return X.loc[:, selected]
 
 
-def remove_correlated_features(X, threshold=0.9): #TODO: try what happens if i dont remove the first intsace of a redundant feature, but the feature that has lower correlation with the target variable 
+def remove_correlated_features(X, threshold=0.9):
     '''Remove highly correlated features based on a correlation threshold'''
 
     corr_matrix = X.corr().abs()

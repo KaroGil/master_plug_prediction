@@ -146,3 +146,8 @@ def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
     joblib.dump(artifact, path, compress=3)
     print(f"💾 Saved dataset artifact: {path}")
     return path
+
+def load_dataset_artifact(dataset_name: str, base_path: str) -> dict:
+    path = os.path.join(base_path, f"{dataset_name}.joblib")
+    artifact = joblib.load(path)
+    return artifact
