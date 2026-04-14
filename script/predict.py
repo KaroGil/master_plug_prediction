@@ -1,10 +1,10 @@
-from script.helper_methods.data_preprocessing import preprocess_data_predict
-import joblib
 import sys
 import numpy as np
 import pandas as pd
-from script.helper_methods import data_visualization as dv
 from script.helper_methods.config import get_config
+from script.helper_methods.model_io import load_model
+from script.helper_methods import data_visualization as dv
+from script.helper_methods.data_preprocessing import preprocess_data_predict
 
 # Load config
 cfg = get_config()
@@ -21,8 +21,8 @@ print(f"Loading data from: {BASE_PATH + csv_file + '/*.csv'}")
 data = pd.read_csv(BASE_PATH + csv_file + '.csv')
 
 X, y = preprocess_data_predict(data, dataset_name=csv_file)
-
-model = joblib.load("models/best_model.joblib")
+    
+model = load_model("models/best_model.joblib")
 print("Model used: " + type(model).__name__ + " with parameters: " + str(model.get_params()))
 
 predictions = model.predict(X)

@@ -6,10 +6,11 @@ from script.helper_methods.config import get_config
 
 # Load config
 cfg = get_config()
-
 seed = cfg["experiment"]["random_state"]
 
 def get_models_and_params(y):
+    ''' Define models and hyperparameters for tuning '''
+    
     if len(np.unique(y)) == 1: #Fallback
         print("⚠️  Only one class present.")
         return (

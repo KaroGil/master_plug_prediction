@@ -66,3 +66,12 @@ Used for testing purposes to easily and cleanly see the outcome of model selecti
 ```
 python -m script.print_scores.py
 ```
+
+### describe.py
+
+Prints the out information about the experimental data used.
+Describtions of the dataset to be used to further understand the dataset.
+
+```
+python -m script.describe.py
+```

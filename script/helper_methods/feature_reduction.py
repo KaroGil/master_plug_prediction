@@ -7,7 +7,6 @@ from script.helper_methods.config import get_config
 
 # Load config
 cfg = get_config()
-
 seed = cfg["experiment"]["random_state"]
 always_keep_columns = cfg["data"]["always_keep_columns"]
 
@@ -18,16 +17,6 @@ MODELS_DIR = os.path.abspath(MODELS_DIR)
 
 shap_path = os.path.join(MODELS_DIR, 'shap_selected_mask.pkl')
 shap_path = os.path.abspath(shap_path)
-
-
-def reduce_features(X_train, X_val, X_test, features_to_remove):
-    '''Remove specified features (columns) from datasets'''
-
-    X_train_reduced = X_train.drop(columns=features_to_remove)
-    X_val_reduced = X_val.drop(columns=features_to_remove)
-    X_test_reduced = X_test.drop(columns=features_to_remove)
-
-    return X_train_reduced, X_val_reduced, X_test_reduced
 
 
 def shap_feature_importance(X_train, y_train, shap_subset_size=100):
@@ -87,7 +76,6 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
 
 def remove_shap_low_importance_features(X, selected):
     '''Remove low importance features based on SHAP selection mask'''
-
     return X.loc[:, selected]
 
 
@@ -98,12 +86,10 @@ def remove_correlated_features(X, threshold=0.9):
     upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
     to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
-    
     to_drop = [col for col in to_drop if col not in always_keep_columns]
 
     X_reduced = X.drop(columns=to_drop)
 
     print(f"⚙️  Removed {len(to_drop)} correlated features with threshold > {threshold}")
-    print("Remaining features:", X_reduced.shape[1])
 
     return X_reduced, to_drop

@@ -3,10 +3,8 @@ import numpy as np
 
 from .config import get_config
 
-
 # Load config
 cfg = get_config()
-
 target_col = cfg["data"]["target"]
 
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
