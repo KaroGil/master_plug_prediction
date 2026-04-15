@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 PATH = os.path.join("models", "model_comparison_summary.csv")
 
 df = pd.read_csv(PATH)

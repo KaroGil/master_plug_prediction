@@ -137,7 +137,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     return y_test_pred, f1_score_value
 
 
-def model_data(X_train, y_train, X_test, y_test):
+def model_data(X_train, y_train, X_test, y_test, horizon="default_run"):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
     best_model = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
@@ -145,14 +145,15 @@ def model_data(X_train, y_train, X_test, y_test):
     save_model(best_model)
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
 
-    # imp = dv.plot_feature_importance(
-    #     best_model,
-    #     X_train,
-    #     y_train,
-    #     method="permutation",
-    #     top_n=20
-    # )
-    # print(imp)
+    imp = dv.plot_feature_importance(
+        best_model,
+        X_train,
+        y_train,
+        method="permutation",
+        top_n=20,
+        horizon=horizon
+    )
+    print(imp)
    
     _, f1_score_value = evaluate_model_on_test(best_model, X_test, y_test)
     return best_model, f1_score_value

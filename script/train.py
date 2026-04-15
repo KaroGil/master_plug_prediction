@@ -7,7 +7,6 @@ LABLED_PATH = "data/labeled/labeled_"
 
 # Load config
 cfg = get_config()
-
 dataset_nr = cfg['data']['datasets']
 
 datasets = []

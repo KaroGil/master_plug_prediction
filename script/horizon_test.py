@@ -9,7 +9,6 @@ LABLED_PATH = "data/labeled/labeled_"
 
 # Load config
 cfg = get_config()
-
 dataset_nr = cfg['data']['datasets']
 
 datasets = []
@@ -29,7 +28,7 @@ for horizon in horizons:
     print(f"\n\n=== HORIZON: {horizon} samples ===")
     X_train, X_test, y_train, y_test = preprocess_data(datasets, [f"data{i}" for i in dataset_nr], horizon=horizon)
 
-    _, test_f1_score = model_data(X_train, y_train, X_test, y_test) 
+    _, test_f1_score = model_data(X_train, y_train, X_test, y_test, horizon=horizon) 
 
     summary = pd.read_csv("models/model_comparison_summary.csv")
     scores[horizon] = (summary["Best Validation F1 Score"].iloc[0],summary["Best Validation F1 Score"].iloc[1], test_f1_score)        
@@ -58,5 +57,4 @@ for horizon, score in scores.items():
 test_scores = [x[2] for x in scores.values()]
 
 plot_test_f1_vs_horizon(horizons, test_scores)
-
 plot_test_f1_vs_horizon_bar(horizons, test_scores)

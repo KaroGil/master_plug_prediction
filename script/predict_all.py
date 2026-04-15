@@ -4,13 +4,12 @@ import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
-from script.helper_methods.data_preprocessing import preprocess_data_predict
-from script.helper_methods.data_visualization import plot_one
 from script.helper_methods.config import get_config
+from script.helper_methods.data_visualization import plot_one
+from script.helper_methods.data_preprocessing import preprocess_data_predict
 
 # Load config
 cfg = get_config()
-
 target_col = cfg["data"]["target"]
 datasets = cfg["data"]["datasets"]
 horizon = cfg["experiment"]["horizon"]
@@ -25,7 +24,7 @@ def predict_all(runId, samples=horizon):
     dataset_ids = []
     for i in datasets:
         if i in [2]:
-            continue  # Skip data2
+            continue  # Skip data2 because of its size
         data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
         dataset_ids.append(i)
 

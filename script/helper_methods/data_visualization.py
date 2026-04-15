@@ -405,6 +405,7 @@ def plot_feature_importance(
     model,
     X: pd.DataFrame,
     y,
+    horizon, 
     method: str = "auto",
     top_n: int = 25,
     scoring: str = "f1",
@@ -453,7 +454,10 @@ def plot_feature_importance(
     plt.title(title)
     plt.xlabel("Importance")
     plt.tight_layout()
-    plt.show()
+    #plt.show() #TODO Test this
+
+    plt.savefig(f"/plots/feature_importance_{horizon}.png", dpi=300)
+    plt.close()
 
     return imp_df.reset_index(drop=True)
 

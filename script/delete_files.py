@@ -2,7 +2,7 @@ import os
 import shutil
 
 def delete_files_in_directory(directory):
-    """Delete all files in the specified directory."""
+    """Delete all files in the specified directory"""
     if os.path.exists(directory):
         for filename in os.listdir(directory):
             file_path = os.path.join(directory, filename)

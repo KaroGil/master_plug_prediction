@@ -8,10 +8,8 @@ from script.helper_methods.data_preprocessing import preprocess_data_predict
 
 # Load config
 cfg = get_config()
-
 target_col = cfg["data"]["target"]
 flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
-
 
 BASE_PATH = "data/labeled/labeled_"
 
@@ -29,7 +27,6 @@ predictions = model.predict(X)
 
 print("Visualizing predicted vs true values...")
 X["flow_rate"] =  data["Flow rate (Mean)"] # Add flow rate column to df, for visualization
-
 X[target_col] = y
 dv.visualize_predicted_vs_true(X, predictions, model_name=type(model).__name__, flow_rate_missing=(csv_file in flow_rate_missing_sets))
 

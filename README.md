@@ -1,7 +1,109 @@
-# master_plug_prediction
+# Machine Learning-Assisted Prediction of Plug Formation in Pipes
 
-5*, -2C, 400 kg-h = data1
-15.6*,-2C,400 kg-h = data2
+The goal of this repository is to develop a **machine learning model capable of predicting pipe plugging events before they occur**, based on high-resolution experimental data such as pressure, flow rate, and temperature.
+
+## 🎯 Objectives
+
+- Analyze experimental time-series data from controlled plugging experiments
+- Identify early indicators of plug formation
+- Develop ML models for **early prediction**
+- Evaluate model performance
+
+## 📂 Dataset
+
+The dataset consists of experimental logs where particles progressively block a pipe system.
+
+### Features
+
+- Pressure measurements
+- Flow rates
+- Temperature
+
+### Target
+
+- Plugging event (binary classification)
+
+## ⚙️ Methodology
+
+### 1. Data Preprocessing
+
+- Data Loading
+- Feature Engineering
+  - Combined features
+  - Temporal features (derivatives)
+  - Plug index feature
+  - Data windowing + Rolling statistics (mean, std, min, max, slope)
+- Data splitting
+- Feature Removal
+  - SHAP
+  - Correlation
+
+### 2. Modeling Approaches
+
+**Cross Validation**
+
+- Random Search CV
+
+**Baseline Models**
+
+- Dummy Classifier
+
+**Supervised Models**
+
+- Random Forest
+- XGBoost
+
+### 3. Evaluation
+
+- F1-score
+
+## 🏗️ Project structure
+
+```bash
+Master/
+├── data/
+│ ├── labeled/ # Labeled data
+│ ├── processed_data/ # Cleaned & feature-engineered data
+│ └── raw_data/ # Original experimental data
+├── models/ # generated model files
+├── notebooks/ # data labeling
+├── plots/ # generated and saved plots
+│ └── horizon_test/ # generated plots from horizon tests
+├── script/
+│ ├── helper_methods/
+│ │  ├── config.py # method to fetch configurations
+│ │  ├── data_loader.py # methods for loading datafiles
+│ │  ├── data_modeling.py # model traning and evaluation
+│ │  ├── data_preprocessing.py # data preprocessing methods
+│ │  ├── data_visualization.py # visualization methods
+│ │  ├── feature_engineering.py # feature engineering
+│ │  ├── feature_reduction.py # feature reduction methods
+│ │  ├── model_io.py # model saving and loading methods
+│ │  ├── models.py # models and hyperparameters
+│ │  └── window.py # data windowing and statistical feature
+│ ├── __init__.py
+│ ├── data_prep.py # script for data preperation
+│ ├── delete_files.py # script for deleting generated files
+│ ├── describe.py # script for printing data descriptions
+│ ├── horizon_test.py # script for performing horizon test
+│ ├── model_select.py # script for selecting best model
+│ ├── predict_all.py # script for predicting on all dataset
+│ ├── predict.py # script for predicting one dataset
+│ ├── print_scores.py # script for printing performance score
+│ └── train.py # script for data preperation and model selction
+├── .gitignore
+├── config.yaml
+├── README.md
+└── requirements.txt
+```
+
+## 🚀 Installation
+
+```bash
+git clone <repo-url>
+cd project
+pip install -r requirements.txt
+```
 
 ## Scripts
 
@@ -13,22 +115,15 @@ python -m script.{script_name}
 
 ### train.py
 
-Possible parameters: dataset name to specify which dataset is used for traning. Only 1 dataset can be specified as of now, but additional datasets are added manually in the code.
-Default: dataset1
+Prepares the raw labeled data and train + evaluates the models to select the best model which it saves for future use.
 
 ```
-python -m script.train {dataset name}
-```
-
-example
-
-```
-python -m script.train data2
+python -m script.train
 ```
 
 ### predict.py
 
-Predicts the outcome of a given dataset.
+Predicts the outcome of a given dataset using the best model saved from running train.py.
 Possible parameters: dataset name to specify which dataset is used for traning. Only 1 dataset can be specified.
 Default: dataset1
 
@@ -44,10 +139,20 @@ python -m script.predict data2
 
 ### predict_all.py
 
-Predicts the outcomes of all datasets present in data/rawdata
+Predicts the outcomes of all datasets present in data/labeled using the best model saved from running train.py.
 
 ```
 python -m script.predict_all
+```
+
+### horizon_test.py
+
+Prepares data, performs model training and evaluation and selects best model as well as predicting for all datasets for different time horizons.
+Time horizons tested are specified in the file, now corresponding to 5s, 10s, 15s, 25s, 50s.
+Saved prediction and score plots for each time horizon as well as a barplot showing the performance of all time horizons to compare.
+
+```
+python -m script.horizon_test
 ```
 
 ### delete_files.py
@@ -74,4 +179,21 @@ Describtions of the dataset to be used to further understand the dataset.
 
 ```
 python -m script.describe.py
+```
+
+### data_prep.py
+
+Used to only prepared the labeled raw data without also training models.
+
+```
+python -m script.data_prep.py
+```
+
+### model_select.py
+
+Used to perform model training, prepared data has to be available (f.ex. by running data_prep.py first).
+Saves best model.
+
+```
+python -m script.model_select.py
 ```
