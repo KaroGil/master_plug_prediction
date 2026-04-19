@@ -1,13 +1,10 @@
 import os
 import numpy as np
 import pandas as pd
-from imblearn import FunctionSampler
-from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import classification_report, f1_score, fbeta_score, make_scorer
 
-from . import feature_engineering as fe
 from . import data_visualization as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
@@ -15,7 +12,6 @@ from script.helper_methods.config import get_config
 
 # Load config
 cfg = get_config()
-
 seed = cfg["experiment"]["random_state"]
 n_iter = cfg["experiment"]["n_iter"]
 

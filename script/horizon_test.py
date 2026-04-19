@@ -1,15 +1,15 @@
 import pandas as pd
 from script.predict_all import predict_all
+from script.helper_methods.config import get_config
 from script.helper_methods.data_modeling import model_data
 from script.helper_methods.data_preprocessing import preprocess_data
 from script.helper_methods.data_visualization import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
-from script.helper_methods.config import get_config
 
-LABLED_PATH = "data/labeled/labeled_"
 
 # Load config
 cfg = get_config()
 dataset_nr = cfg['data']['datasets']
+LABLED_PATH = cfg['data']['LABELED_PATH']
 
 datasets = []
 
@@ -31,7 +31,7 @@ for horizon in horizons:
     _, test_f1_score = model_data(X_train, y_train, X_test, y_test, horizon=horizon) 
 
     summary = pd.read_csv("models/model_comparison_summary.csv")
-    scores[horizon] = (summary["Best Validation F1 Score"].iloc[0],summary["Best Validation F1 Score"].iloc[1], test_f1_score)        
+    scores[horizon] = (summary["Best Validation F1 Score"].iloc[1],summary["Best Validation F1 Score"].iloc[2], test_f1_score)
 
     predict_all(runId=f"{horizon}_samples", samples=horizon)
     print(f"\n\n=== SUMMARY OF SCORES FOR HORIZON {horizon} SAMPLES ===")

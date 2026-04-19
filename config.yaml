@@ -30,9 +30,9 @@ data:
       23,
       24,
       25,
-    ] #[4, 5, 7, 8, 10]
-  test_sets: [18, 22, 25]
-  flow_rate_missing: [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 24, 25]
+    ] # [4, 5, 7, 8, 10] (used for faster testing)
+  test_sets: [18, 22, 25] #[10] (used for faster testing)
+  flow_rate_missing: [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 24, 25] #[4, 8, 10](used for faster testing)
   target: "Plug_future"
   non_feature_columns: ["Plug_future", "Plug", "LogId", "Flow rate (Mean)"]
   always_keep_columns:
@@ -42,3 +42,4 @@ data:
       "LogId",
       "Flow rate (Mean)_mean",
     ]
+  LABELED_PATH: "data/labeled/labeled_"

@@ -24,13 +24,11 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     Calculate SHAP feature importance for the given model and training data, and
     remove features with low importance. 
     '''    
-
     baseline = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1)
     baseline.fit(X_train, y_train)
-    print("🛠️ Baseline model trained.")
+    print("🛠️ SHAP baseline model trained.")
 
     shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
-    print("SHAP calculation indices:", shap_idx)
     X_shap = X_train.iloc[shap_idx]
     print("Calculating SHAP values on subset of size:", X_shap.shape)
 
@@ -47,9 +45,10 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
             shap_values = raw_shap
 
     importance = np.mean(np.abs(shap_values), axis=0)  
-
-    print("SHAP importance shape:", importance.shape)
-    print("Top 10 important features:", list(X_train.columns[np.argsort(importance)[-10:]]))
+    
+    print("-"*20)
+    print("Top 10 important features:\n", "\n".join(list(X_train.columns[np.argsort(importance)[-10:]])))
+    print("-"*20)
 
     threshold = np.percentile(importance, 30)         
     selected = importance > threshold    

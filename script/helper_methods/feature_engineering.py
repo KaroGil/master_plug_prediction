@@ -131,12 +131,12 @@ def feature_engineering_pipeline(df):
     df = pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
 
-    if "Flow rate (Mean)" in df.columns:
+    if "Flow rate (Mean)" in df.columns and "Flow rate (Mean)" not in non_feature_columns:
         df = normlized_pressure_drop_feature(df)
         df = flow_path_openess_feature(df)
         df = flow_pressure_response_feature(df)
     
-    if "Temperature TS inlet (Mean)" in df.columns and "Temperature TS outlet (Mean)" in df.columns:
+    if "Temperature TS inlet (Mean)" in df.columns and "Temperature TS outlet (Mean)" in df.columns and "Temperature TS outlet (Mean)" not in non_feature_columns and "Temperature TS inlet (Mean)" not in non_feature_columns:
         df = ts_temperature_rise(df)
         df = ts_bypass_difference(df)
 
@@ -168,7 +168,7 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
     df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
     
-    if flow_col in df.columns: #If flow rate is included in training, also include it in the plug index calculation
+    if flow_col in df.columns and flow_col not in non_feature_columns: #If flow rate is included in training, also include it in the plug index calculation
         df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
 
         df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]

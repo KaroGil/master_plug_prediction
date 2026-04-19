@@ -105,7 +105,17 @@ cd project
 pip install -r requirements.txt
 ```
 
-## Scripts
+## 🕹️ Instructions
+
+1. Clone repo
+2. Ensure raw data is in data/raw_data
+   - each experimental log in its own subfolder called dataX, f.ex. data1 (data1-data25)
+3. Run labeled_data.ipynb to label raw_data
+   - works on the 25 datasets given
+4. Run train.py to prepare data and train models
+5. Run predict.py {dataset_name} or predict_all.py to predict the labels using the best model.
+
+## 📑 Scripts
 
 To run the scripts use
 

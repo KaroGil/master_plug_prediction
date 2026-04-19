@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pandas as pd  
 import seaborn as sns
@@ -454,9 +456,8 @@ def plot_feature_importance(
     plt.title(title)
     plt.xlabel("Importance")
     plt.tight_layout()
-    #plt.show() #TODO Test this
 
-    plt.savefig(f"/plots/feature_importance_{horizon}.png", dpi=300)
+    plt.savefig(f"plots/feature_importance/{horizon}.png", dpi=300)
     plt.close()
 
     return imp_df.reset_index(drop=True)
@@ -528,6 +529,37 @@ def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col
         plt.title(f"Data nr {shown_id}" if shown_id not in train_set_nrs else f"Data nr {shown_id} [training set]")
     plt.legend()
 
+def plot_all_predictions(X_y_list, y_preds, dataset_ids, flow_rate_missing_sets, samples, model, runId):
+    n_plots = len(X_y_list)  
+    ncols = 5                
+    nrows = math.ceil(n_plots / ncols)
+
+    plt.figure(figsize=(4*ncols, 3.2*nrows))  
+
+    for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
+        X["flow_rate"] = flow
+        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
+   
+    plt.subplots_adjust(hspace=0.5)
+
+    # Save the plot
+    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f"plots/{runId}.png", dpi=300)
+    print(f"Plot saved as plots/{runId}.png")
+    plt.close()
+
+
+def f1_score_bar_plot(dataset_ids, f1scores, runId):
+    plt.figure(figsize=(8, 5))
+    plt.bar([str(id) for id in dataset_ids], f1scores, color='skyblue')
+    plt.xlabel('Dataset ID')
+    plt.ylabel('F1 Score')
+    plt.title(f'F1 Scores for Predicted vs True {target_col}=1 Events')
+    plt.ylim(0, 1)
+    plt.savefig(f"plots/f1_scores/{runId}.png", dpi=300)
+    print(f"F1 score plot saved as plots/f1_scores/{runId}.png")
+    plt.close()
 
 ## Horizon
 
@@ -542,10 +574,12 @@ def plot_test_f1_vs_horizon(
 
     plt.figure(figsize=figsize)
 
-    plt.plot(horizons, test_scores,
+    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons] ##NEW feature TODO test
+
+    plt.plot(horizon_seconds, test_scores,
              marker="o", linewidth=2, label="Random Forest")
 
-    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.xlabel("Prediction Horizon samples (seconds)")
     plt.ylabel("F1 Score (Test Set)")
     plt.title("Test F1 vs Prediction Horizon")
     plt.legend()
@@ -555,9 +589,8 @@ def plot_test_f1_vs_horizon(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
-    #plt.show() TODO Test this
 
-    plt.savefig("/plots/horizon_test/f1_scores_line_plot.png", dpi=300)
+    plt.savefig("plots/horizon_test/f1_scores_line_plot.png", dpi=300)
     plt.close()
 
 
@@ -585,16 +618,18 @@ def plot_test_f1_vs_horizon_bar(
     for i in range(len(x)):
         plt.text(i, test_scores[i] // 2, f"{test_scores[i]:.3f}", ha='center')
 
-    plt.xlabel("Prediction Horizon (s before plug)")
+    plt.xlabel("Prediction Horizon samples (seconds)")
     plt.ylabel("F1 Score (Test Set)")
     plt.title("Test F1 vs Prediction Horizon")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
-    plt.xticks(x, horizons)
+
+    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons] ##NEW feature TODO test
+    plt.xticks(x, horizon_seconds)
 
     if invert_xaxis:
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
-    #plt.show() TODO Test this
-    plt.savefig("/plots/horizon_test/f1_scores_bar_plot.png", dpi=300)
+    plt.savefig("plots/horizon_test/f1_scores_bar_plot.png", dpi=300)
     plt.close()
+

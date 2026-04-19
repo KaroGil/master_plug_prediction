@@ -6,6 +6,7 @@ from .config import get_config
 # Load config
 cfg = get_config()
 target_col = cfg["data"]["target"]
+non_feature_columns = cfg["data"]["non_feature_columns"]
 
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     """
@@ -52,6 +53,8 @@ def prep_window(df, features):
     FS = 2 # Hz
     WINDOW_S = 2
     W = FS * WINDOW_S
+
+    features = [col for col in features if col not in non_feature_columns]
 
     X, y = make_windowed_Xy_stats(
     df=df,

@@ -2,11 +2,10 @@ import pandas as pd
 from script.helper_methods.config import get_config
 from script.helper_methods.data_preprocessing import preprocess_data
 
-LABLED_PATH = "data/labeled/labeled_"
-
 # Load config
 cfg = get_config()
 dataset_nr = cfg['data']['datasets']
+LABLED_PATH = cfg['data']['LABELED_PATH']
 
 datasets = []
 

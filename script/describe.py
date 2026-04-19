@@ -12,6 +12,7 @@ print("=" * 50)
 print("DATA DESCRIPTION")
 print("=" * 50)
 
+print(f"Flow rate features: {', '.join([col for col in df.columns if 'flow' in col or 'Flow' in col])}")
 print(f"\nShape: {df.shape}")
 print(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
 print(f"\nColumns: {list(df.columns)}")

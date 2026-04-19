@@ -1,12 +1,9 @@
-import math
-
 import joblib
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
-from script.helper_methods.data_visualization import plot_one
 from script.helper_methods.data_preprocessing import preprocess_data_predict
+from script.helper_methods.data_visualization import f1_score_bar_plot, plot_all_predictions, plot_one
 
 # Load config
 cfg = get_config()
@@ -54,38 +51,12 @@ def predict_all(runId, samples=horizon):
 
     # Visualize predictions as bar plot
     print("📊 Visualizing f1-scores as bar plots...")
-    plt.figure(figsize=(8, 5))
-    plt.bar([str(id) for id in dataset_ids], f1scores, color='skyblue')
-    plt.xlabel('Dataset ID')
-    plt.ylabel('F1 Score')
-    plt.title(f'F1 Scores for Predicted vs True {target_col}=1 Events')
-    plt.ylim(0, 1)
-    plt.savefig(f"plots/f1_scores_{runId}.png", dpi=300)
-    print(f"F1 score plot saved as plots/f1_scores_{runId}.png")
-    plt.close()
+    f1_score_bar_plot(dataset_ids, f1scores, runId)
 
     # Visualize as true vs predicted events line plots
     print("📊 Visualizing predicted vs true values...")
     print(f"Datasets with flow rate missing: {flow_rate_missing_sets}")
-
-    n_plots = len(X_y_list)  
-    ncols = 5                
-    nrows = math.ceil(n_plots / ncols)
-
-    plt.figure(figsize=(4*ncols, 3.2*nrows))  
-
-    for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
-        X["flow_rate"] = flow
-        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
-   
-    plt.subplots_adjust(hspace=0.5)
-
-    # Save the plot
-    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(f"plots/{runId}.png", dpi=300)
-    print(f"Plot saved as plots/{runId}.png")
-    plt.close()
+    plot_all_predictions(X_y_list, y_preds, dataset_ids, flow_rate_missing_sets, samples, model, runId) 
 
 if __name__ == "__main__":
     predict_all(runId="default_run")
