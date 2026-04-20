@@ -292,15 +292,15 @@ def visualize_predicted_vs_true(df, y_pred, model_name=None, plotLabel=True, flo
     plt.show()
 
 
-def plot_correlation_matrix(X_train):
+def plot_correlation_matrix(corr, horizon, annotations=False):
     '''Plot correlation matrix of features to identify relationships'''
 
-    corr = X_train.corr()
     plt.figure(figsize=(10, 8))
-    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", cbar=True)
-    plt.title('Feature Correlation Matrix')
+    sns.heatmap(corr, annot=annotations, cmap="coolwarm", fmt=".2f", cbar=True)
+    plt.title(f'Feature Correlation Matrix - Horizon: {horizon}')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"plots/correlation_matrix_{horizon}.png", dpi=300)
+    plt.close()
 
 
 def plot_confusion_matrix(y_true, y_pred, standalone=True, ax=None, labels=None):
@@ -574,7 +574,7 @@ def plot_test_f1_vs_horizon(
 
     plt.figure(figsize=figsize)
 
-    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons] ##NEW feature TODO test
+    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons]
 
     plt.plot(horizon_seconds, test_scores,
              marker="o", linewidth=2, label="Random Forest")
@@ -623,7 +623,7 @@ def plot_test_f1_vs_horizon_bar(
     plt.title("Test F1 vs Prediction Horizon")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
 
-    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons] ##NEW feature TODO test
+    horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons]
     plt.xticks(x, horizon_seconds)
 
     if invert_xaxis:

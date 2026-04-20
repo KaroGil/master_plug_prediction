@@ -100,6 +100,7 @@ def load_raw_data(path="../data/raw_data/data1/*.csv", reconstruct_time=False, s
 
     return df
 
+
 def load_data(path="../data/raw_data/data1/*.csv"):
     '''Load and concatenate CSV files from a given path'''
 

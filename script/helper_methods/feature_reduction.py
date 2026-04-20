@@ -4,6 +4,7 @@ import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from script.helper_methods.config import get_config
+from script.helper_methods.data_visualization import plot_correlation_matrix
 
 # Load config
 cfg = get_config()
@@ -78,10 +79,11 @@ def remove_shap_low_importance_features(X, selected):
     return X.loc[:, selected]
 
 
-def remove_correlated_features(X, threshold=0.9):
+def remove_correlated_features(X, horizon, threshold=0.9):
     '''Remove highly correlated features based on a correlation threshold'''
 
     corr_matrix = X.corr().abs()
+    plot_correlation_matrix(corr_matrix, horizon)
     upper_tri = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
     to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]

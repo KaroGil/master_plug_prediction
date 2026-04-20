@@ -180,7 +180,7 @@ def preprocess_data(datasets, dataset_names, horizon=horizon, BASE_PATH = ""):
     X_train, selected = fr.shap_feature_importance(X_train, y_train, shap_subset_size=50)
     X_test = fr.remove_shap_low_importance_features(X_test, selected)
 
-    X_train, to_drop = fr.remove_correlated_features(X_train, threshold=0.9)
+    X_train, to_drop = fr.remove_correlated_features(X_train, horizon=horizon, threshold=0.9)
     X_test = X_test.drop(columns=to_drop)
     
     data_to_save = {
