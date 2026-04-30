@@ -155,12 +155,33 @@ def feature_engineering_windowing(df, dataset_name="data1"):
 
     return X, y
 
-def resample_data_1_Hz(data):
-    pass
+def resample_data_1_Hz(dataset):
+    """ Resamples data to 1Hz (1 sample per second) frequency to make sure each dataset has the same sample rate. """
+
+    dataset.index = pd.to_datetime(dataset.index)
+
+    label_cols = [c for c in ["Plug", "Plug_future"] if c in dataset.columns]
+    numeric_cols = dataset.select_dtypes(include="number").columns.difference(label_cols)
+    other_cols = dataset.select_dtypes(exclude="number").columns
+
+    print(f"Label cols: {label_cols} \n Numeric cols: {numeric_cols} \n Other cols: {other_cols}")
+
+    agg_dict = {col: "mean" if col in numeric_cols else "first" for col in dataset.columns}
+    agg_dict.update({col: "max" for col in label_cols})
+
+    resampled_dataset = dataset.resample("1s").agg(agg_dict).dropna(how="all")
+
+    if "Plug_future" in dataset.columns:
+        resampled_dataset = resampled_dataset.drop(columns = ["Plug_future"])
+
+    return resampled_dataset
 
 def preprocess_data(datasets, dataset_names, horizon=horizon, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
     # Resample dataset so every dataset is sampled with 1.0s intervals. 
+    print("Resampling datasets...")
+    for dataset in datasets:
+        dataset = resample_data_1_Hz(dataset)
     
     print(f"Processing data: {dataset_names[0]}")
     create_future_target(datasets[0], horizon=horizon)
@@ -205,6 +226,11 @@ def preprocess_data(datasets, dataset_names, horizon=horizon, BASE_PATH = ""):
 
 def preprocess_data_predict(df, dataset_name, horizon=horizon):
     '''Full preprocessing pipeline for prediction'''
+
+    # Resample dataset so every dataset is sampled with 1.0s intervals. 
+    print("Resampling datasets...")
+    print(f"Resampling dataset {dataset_name}")
+    df = resample_data_1_Hz(df)
 
     latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib"))
     DATASET_PATH = latest["artifact_path"]
