@@ -155,13 +155,10 @@ def feature_engineering_windowing(df, dataset_name="data1"):
 
     return X, y
 
-def resample_data_1_Hz(data):
-    pass
 
 def preprocess_data(datasets, dataset_names, horizon=horizon, BASE_PATH = ""):
     '''Full preprocessing pipeline for model selection and training'''
-    # Resample dataset so every dataset is sampled with 1.0s intervals. 
-    
+
     print(f"Processing data: {dataset_names[0]}")
     create_future_target(datasets[0], horizon=horizon)
 

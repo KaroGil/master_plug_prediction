@@ -44,3 +44,4 @@ data:
       "Flow rate (Mean)_mean",
     ]
   LABELED_PATH: "data/labeled/labeled_"
+  frequency: 1 # Hz

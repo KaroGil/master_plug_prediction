@@ -25,8 +25,6 @@ if preped_for_prediction_exists():
     dataset_ids = []
     X_y_list = []
     for i in datasets:
-        if i in [2]:
-            continue
         dataset_ids.append(i)
         X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
         y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
@@ -38,8 +36,6 @@ else:
     dataset_ids = []
     X_y_list = []
     for i in datasets:
-        if i in [2]:
-            continue
         dataset_ids.append(i)
         X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
         y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
@@ -52,8 +48,6 @@ data_list = []
 dataset_ids = []
 print(datasets)
 for i in datasets:
-    if i in [2]:
-        continue  # Skip data2 because of its size
     data_list.append(pd.read_csv(BASE_PATH + f"data{i}.csv"))
     dataset_ids.append(i)
 

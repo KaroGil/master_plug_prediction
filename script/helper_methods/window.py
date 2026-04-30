@@ -7,6 +7,7 @@ from .config import get_config
 cfg = get_config()
 target_col = cfg["data"]["target"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
+frequency = cfg["data"]["frequency"]
 
 def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     """
@@ -50,7 +51,8 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
 
 
 def prep_window(df, features):
-    FS = 2 # Hz
+    print(f"Preparing windowed features with frequency {frequency} Hz...")
+    FS = frequency # Hz
     WINDOW_S = 2
     W = FS * WINDOW_S
 
