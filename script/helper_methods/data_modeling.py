@@ -3,11 +3,12 @@ import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import classification_report, f1_score, fbeta_score, make_scorer
+from sklearn.metrics import f1_score, fbeta_score, make_scorer
 
 from . import data_visualization as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
+from .model_evaluation import evaluate_model_on_test, evaluate_all_models
 from script.helper_methods.config import get_config
 
 # Load config
@@ -102,6 +103,7 @@ def find_best_model(X_train, y_train):
         best_of_all_models[name] = (best_model, best_params, best_score)
 
         print(f"Best {name} model with params: {best_params} achieved validation F1 Score: {best_score:.4f}")
+    
     summary = [
         {"Model": name, "Best Validation F1 Score": score}
         for name, (_, _, score) in best_of_all_models.items()
@@ -117,28 +119,20 @@ def find_best_model(X_train, y_train):
     best_model_name = max((name for name in best_of_all_models if name != "Dummy"), key=lambda k: best_of_all_models[k][2])
     print(f"\n🏆 Best overall model: {best_model_name} with validation F1 Score: {best_of_all_models[best_model_name][2]:.4f}")
     
-    return best_of_all_models[best_model_name][0]
+    return best_of_all_models, best_model_name
 
-
-def evaluate_model_on_test(model, X_test, y_test):
-    '''Evaluate the final model on the test dataset'''
-    
-    X_test = X_test.drop(columns=['LogId'])  # drop LogId for modeling
-    y_test_pred = model.predict(X_test)
-
-    print("Test set results:")
-    print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
-    f1_score_value = f1_score(y_test, y_test_pred, average='weighted')
-    print("F1 Score:", f1_score_value)
-    return y_test_pred, f1_score_value
 
 
 def model_data(X_train, y_train, X_test, y_test, horizon="default_run"):
     '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
 
-    best_model = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
+    best_of_all_models, best_model_name = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
+    best_model = best_of_all_models[best_model_name][0]
 
     save_model(best_model)
+    save_model(best_of_all_models["Dummy"][0], model_name="dummy")
+    save_model(best_of_all_models["Random Forest"][0], model_name="rf")
+    save_model(best_of_all_models["XGBoost"][0], model_name="xgboost")
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
 
     imp = dv.plot_feature_importance(
@@ -150,6 +144,11 @@ def model_data(X_train, y_train, X_test, y_test, horizon="default_run"):
         horizon=horizon
     )
     print(imp)
+
+    X_test.drop(columns=['LogId'], inplace=True)
    
     _, f1_score_value = evaluate_model_on_test(best_model, X_test, y_test)
+
+    evaluate_all_models(best_of_all_models, X_test, y_test, horizon)
+    
     return best_model, f1_score_value

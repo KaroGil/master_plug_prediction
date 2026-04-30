@@ -2,37 +2,38 @@ experiment:
   name: predict_all
   random_state: 42
   n_iter: 5
-  horizon: 100
+  horizon: 100 # 100s for 0.1s frequency - 1Hz
 
 data:
-  datasets: [
-      1,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      25,
-    ] # [4, 5, 7, 8, 10] (used for faster testing)
-  test_sets: [18, 22, 25] #[10] (used for faster testing)
-  flow_rate_missing: [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 24, 25] #[4, 8, 10](used for faster testing)
+  datasets: [4, 7, 8, 9, 10, 11, 12, 14, 15, 16, 20, 21, 24, 25]
+  # [
+  #     1,
+  #     3,
+  #     4,
+  #     5,
+  #     6,
+  #     7,
+  #     8,
+  #     9,
+  #     10,
+  #     11,
+  #     12,
+  #     13,
+  #     14,
+  #     15,
+  #     16,
+  #     17,
+  #     18,
+  #     19,
+  #     20,
+  #     21,
+  #     22,
+  #     23,
+  #     24,
+  #     25,
+  #   ] # [4, 5, 7, 8, 10] (used for faster testing)
+  test_sets: [24, 25] #[10] (used for faster testing) [18, 22, 25]
+  flow_rate_missing: [4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 24, 25] #[4, 8, 9, 10, 11, 12, 15, 16, 20, 21, 23, 24, 25] #[4, 8, 10](used for faster testing)
   target: "Plug_future"
   non_feature_columns: ["Plug_future", "Plug", "LogId", "Flow rate (Mean)"]
   always_keep_columns:

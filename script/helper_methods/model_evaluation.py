@@ -1,0 +1,301 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    confusion_matrix, ConfusionMatrixDisplay,
+    classification_report,
+    roc_curve, auc,
+    precision_recall_curve, average_precision_score,
+    f1_score, precision_score, recall_score, roc_auc_score
+)
+
+
+def evaluate_model_on_test(model, X_test, y_test):
+    """Evaluate the final model on the test dataset"""
+    
+    y_test_pred = model.predict(X_test)
+
+    print("Test set results:")
+    print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
+    f1_score_value = f1_score(y_test, y_test_pred, average='weighted')
+    print("F1 Score:", f1_score_value)
+    return y_test_pred, f1_score_value
+
+
+
+def get_metrics(y_true, y_pred, y_prob=None, model_name="Dummy Classifier"):
+    """
+    Returns a dict of all key metrics for one model.
+    y_prob: predicted probability for class 1 (optional, needed for AUC scores).
+    """
+    metrics = {
+        "model": model_name,
+        "precision_0":        round(precision_score(y_true, y_pred, pos_label=0, zero_division=0), 4),
+        "precision_1":        round(precision_score(y_true, y_pred, pos_label=1, zero_division=0), 4),
+        "recall_0":           round(recall_score(y_true, y_pred, pos_label=0, zero_division=0), 4),
+        "recall_1":           round(recall_score(y_true, y_pred, pos_label=1, zero_division=0), 4),
+        "f1_0":               round(f1_score(y_true, y_pred, pos_label=0, zero_division=0), 4),
+        "f1_1":               round(f1_score(y_true, y_pred, pos_label=1, zero_division=0), 4),
+        "weighted_f1":        round(f1_score(y_true, y_pred, average="weighted", zero_division=0), 4),
+    }
+ 
+    if y_prob is not None:
+        metrics["roc_auc"]  = round(roc_auc_score(y_true, y_prob), 4)
+        metrics["pr_auc"]   = round(average_precision_score(y_true, y_prob), 4)
+    else:
+        metrics["roc_auc"]  = None
+        metrics["pr_auc"]   = None
+ 
+    return metrics
+ 
+ 
+def print_metrics(metrics: dict):
+    """Pretty-prints the metrics dict."""
+    print(f"\n{'─'*45}")
+    print(f"  {metrics['model']}")
+    print(f"{'─'*45}")
+    print(f"  Weighted F1    : {metrics['weighted_f1']}")
+    print(f"  ROC-AUC        : {metrics['roc_auc']}")
+    print(f"  PR-AUC         : {metrics['pr_auc']}")
+    print(f"\n  {'Class':<12} {'Precision':>10} {'Recall':>10} {'F1':>10}")
+    print(f"  {'─'*42}")
+    for cls, label in [(0, 'No Plug (0)'), (1, 'Plug (1)')]:
+        print(f"  {label:<12} {metrics[f'precision_{cls}']:>10} "
+              f"{metrics[f'recall_{cls}']:>10} {metrics[f'f1_{cls}']:>10}")
+    print(f"{'─'*45}\n")
+
+
+
+def evaluate_all_models(best_of_all_models, X_test, y_test, horizon, save_dir="figures"):
+    """
+    Takes the best_of_all_models dict from find_best_model and runs
+    full evaluation on the held-out test set for every model.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+
+    all_metrics = {}
+
+    for name, (model, _, _) in best_of_all_models.items():
+        print(f"\nEvaluating {name}...")
+
+        y_pred = model.predict(X_test)
+
+        y_prob = None
+        if hasattr(model, "predict_proba"):
+            y_prob = model.predict_proba(X_test)[:, 1]
+
+        if horizon != "default_run":
+            path = f"{save_dir}/horizon_test/{horizon}_{name.lower().replace(' ', '_')}_dashboard.png"
+        else:
+            path = f"{save_dir}/{horizon}_{name.lower().replace(' ', '_')}_dashboard.png"
+
+        metrics = plot_dashboard(
+            y_true=y_test,
+            y_pred=y_pred,
+            y_prob=y_prob,
+            model_name=name,
+            save_path=path
+        )
+
+        all_metrics[name] = metrics
+
+    return all_metrics
+
+
+def plot_confusion_matrix(y_true, y_pred, model_name="Dummy Classifier",
+                           normalize=True, ax=None, save_path=None):
+    """
+    Plots a confusion matrix.
+    normalize=True shows recall per class 
+    """
+    standalone = ax is None
+    if standalone:
+        _, ax = plt.subplots(figsize=(5, 4))
+ 
+    cm = confusion_matrix(y_true, y_pred, normalize="true" if normalize else None)
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=cm,
+        display_labels=["No Plug (0)", "Plug (1)"]
+    )
+    disp.plot(ax=ax, colorbar=False, cmap="Blues", values_format=".2f" if normalize else "d")
+    ax.set_title(f"{model_name}\nConfusion Matrix{'  (normalized)' if normalize else ''}")
+ 
+    if standalone:
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"Saved → {save_path}")
+        plt.show()
+ 
+ 
+def plot_roc_curve(y_true, y_prob, model_name="Dummy Classifier",
+                   ax=None, save_path=None):
+    """
+    Plots ROC curve for one model.
+    y_prob: predicted probabilities for class 1
+    """
+    standalone = ax is None
+    if standalone:
+        _, ax = plt.subplots(figsize=(5, 4))
+ 
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+ 
+    ax.plot(fpr, tpr, lw=2, label=f"{model_name} (AUC = {roc_auc:.3f})")
+    ax.plot([0, 1], [0, 1], "k--", lw=1, label="Random baseline")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title("ROC Curve")
+    ax.legend(loc="lower right")
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.02])
+ 
+    if standalone:
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"Saved → {save_path}")
+        plt.show()
+ 
+    return fpr, tpr, roc_auc
+ 
+ 
+def plot_pr_curve(y_true, y_prob, model_name="Dummy Classifier",
+                  ax=None, save_path=None):
+    """
+    Plots Precision-Recall curve for one model
+    y_prob: predicted probabilities for class 1
+    The dashed baseline = minority class freq
+    """
+    standalone = ax is None
+    if standalone:
+        _, ax = plt.subplots(figsize=(5, 4))
+ 
+    precision, recall, _ = precision_recall_curve(y_true, y_prob)
+    pr_auc = average_precision_score(y_true, y_prob)
+    baseline = np.mean(y_true) 
+ 
+    ax.plot(recall, precision, lw=2, label=f"{model_name} (AP = {pr_auc:.3f})")
+    ax.axhline(y=baseline, color="k", linestyle="--", lw=1,
+               label=f"Random baseline ({baseline:.2f})")
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_title("Precision-Recall Curve")
+    ax.legend(loc="upper right")
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.02])
+ 
+    if standalone:
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            print(f"Saved → {save_path}")
+        plt.show()
+ 
+    return precision, recall, pr_auc
+ 
+ 
+def plot_dashboard(y_true, y_pred, y_prob=None, model_name="Dummy Classifier",
+                   save_path=None):
+    """
+    One-call function: prints metrics + plots confusion matrix, ROC, and PR
+    in a single figure. y_prob is optional but strongly recommended.
+    """
+    metrics = get_metrics(y_true, y_pred, y_prob, model_name)
+    print_metrics(metrics)
+ 
+    n_plots = 3 if y_prob is not None else 1
+    fig, axes = plt.subplots(1, n_plots, figsize=(5 * n_plots, 4))
+    if n_plots == 1:
+        axes = [axes]
+ 
+    plot_confusion_matrix(y_true, y_pred, model_name=model_name, ax=axes[0])
+ 
+    if y_prob is not None:
+        plot_roc_curve(y_true, y_prob, model_name=model_name, ax=axes[1])
+        plot_pr_curve(y_true, y_prob, model_name=model_name, ax=axes[2])
+ 
+    plt.tight_layout()
+ 
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Saved → {save_path}")
+ 
+    return metrics
+
+
+def per_dataset_statistics(f1_scores_dict):
+    """
+    Prints mean, std, min, max F1 across datasets.
+    """
+    print(f"\n{'─'*55}")
+    print("  Per-dataset F1 statistics")
+    print(f"{'─'*55}")
+    print(f"  {'Model':<20} {'Mean':>8} {'Std':>8} {'Min':>8} {'Max':>8}")
+    print(f"  {'─'*52}")
+
+    for model_name, scores in f1_scores_dict.items():
+        scores = np.array(scores)
+        print(f"  {model_name:<20} "
+              f"{scores.mean():>8.4f} "
+              f"{scores.std():>8.4f} "
+              f"{scores.min():>8.4f} "
+              f"{scores.max():>8.4f}")
+
+
+def false_alarm_analysis(y_true, y_pred, dataset_id,
+                         sample_rate_hz=2, model_name="Model"):
+    """
+    Plots where false alarms (FP) and missed detections (FN)
+    occur over time in a single dataset.
+    sample_rate_hz: sampling frequency of your sensor (2Hz = 0.5s per sample)
+    """
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    time_axis = np.arange(len(y_true)) / sample_rate_hz  # seconds
+
+    fp_mask = (y_pred == 1) & (y_true == 0)  # false alarms
+    fn_mask = (y_pred == 0) & (y_true == 1)  # missed plugs
+    tp_mask = (y_pred == 1) & (y_true == 1)  # correct plug detections
+
+    _, ax = plt.subplots(figsize=(14, 3))
+
+    plug_regions = np.where(y_true == 1)[0]
+    if len(plug_regions) > 0:
+        ax.fill_between(time_axis, 0, 1,
+                        where=(y_true == 1),
+                        alpha=0.15, color="#2196F3",
+                        label="True plug region")
+
+    ax.scatter(time_axis[tp_mask],
+               np.ones(tp_mask.sum()) * 0.7,
+               marker="|", color="#4CAF50", s=60,
+               label=f"True positive ({tp_mask.sum()})", alpha=0.7)
+    ax.scatter(time_axis[fp_mask],
+               np.ones(fp_mask.sum()) * 0.5,
+               marker="|", color="#E65100", s=60,
+               label=f"False alarm ({fp_mask.sum()})", alpha=0.7)
+    ax.scatter(time_axis[fn_mask],
+               np.ones(fn_mask.sum()) * 0.3,
+               marker="|", color="#9C27B0", s=60,
+               label=f"Missed plug ({fn_mask.sum()})", alpha=0.7)
+
+    ax.set_xlabel("Time (seconds)", fontsize=12)
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.0),
+               ncol=4, fontsize=10, frameon=False)
+    plt.tight_layout(rect=[0, 0.12, 1, 1.0])
+    ax.grid(axis="x", linestyle="--", alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(f"figures/false_alarm_timeline_"
+                f"{model_name.replace(' ', '_')}_ds{dataset_id}.png",
+                bbox_inches="tight")
+
+    print(f"\nDataset {dataset_id} — {model_name}")
+    print(f"  True positives : {tp_mask.sum()}")
+    print(f"  False alarms   : {fp_mask.sum()}")
+    print(f"  Missed plugs   : {fn_mask.sum()}")
+

@@ -1,13 +1,19 @@
+import os
 import math
-
 import numpy as np
 import pandas as pd  
-import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.calibration import calibration_curve
 from sklearn.inspection import permutation_importance
-from sklearn.metrics import confusion_matrix, precision_recall_curve, average_precision_score
 from script.helper_methods.config import get_config
+
+# Config for plots
+plt.rcParams.update({
+    'font.size': 11,
+    'axes.titlesize': 12,
+    'axes.labelsize': 10,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9,
+})
 
 # Load config
 cfg = get_config()
@@ -18,41 +24,11 @@ target_col = cfg["data"]["target"]
 test_sets = cfg["data"]["test_sets"]
 
 
-def plot_feature_histograms(data, name=None):
-    '''Histograms for each numeric feature'''
-
-    data.select_dtypes(include=[np.number]).hist(bins=30, figsize=(15, 10), layout=(2, -1))
-    plt.suptitle(f'Histograms of Features for {name}' if name else 'Histograms of Features', fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.show()
-
-
-def plot_feature_boxplots(data, name=None):
-    '''Boxplots for each numeric feature'''
-
-    df_numeric = data.select_dtypes(include=[np.number])
-    num_features = df_numeric.shape[1]
-    cols = 2
-    rows = (num_features + 1) // cols
-
-    fig, axes = plt.subplots(rows, cols, figsize=(12, 2.5 * rows))
-    axes = axes.flatten()
-
-    for i, col in enumerate(df_numeric.columns):
-        sns.boxplot(x=df_numeric[col], ax=axes[i], color="skyblue")
-        axes[i].set_title(f'Boxplot of {col} for {name}' if name else f'Boxplot of {col}')
-        axes[i].set_xlabel("")
-
-    # Hide any unused subplots
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-
-    plt.tight_layout()
-    plt.show()
-
-
 def visualize_key_column(data, key="Flow rate (Mean)", name=None):
-    '''Visualize flow rate and pump outlet pressure over time'''
+    """
+    Visualize flow rate and pump outlet pressure over time
+    Used when labeling data. 
+    """
 
     if key not in data.columns:
         raise ValueError(f"Column '{key}' not found in dataset.")
@@ -71,29 +47,10 @@ def visualize_key_column(data, key="Flow rate (Mean)", name=None):
     plt.show()
 
 
-def plot_flow_pressure_drop_temp(data, start_time=None, end_time=None, name=None):
-    '''Plot Flow rate, Pump outlet pressure, Drop pressure and Temperature over time'''
-
-    if start_time and end_time:
-        data = data.loc[start_time:end_time]
-
-    fig, ax = plt.subplots(figsize=(16,8))
-    colors = plt.cm.tab20.colors 
-    for i, col in enumerate(data.columns):
-        ax.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data[col], label=col, color=colors[i % len(colors)])
-    ax.set_xlabel("Elapsed_seconds")
-    ax.set_ylabel("Value")
-    ax.set_title(f"All Signals Over Time for {name}" if name else "All Signals Over Time")
-    ax.legend(loc='upper left', bbox_to_anchor=(1,1))
-    fig.tight_layout()
-    plt.show()
-
-    return fig
-
-
 def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", name=None, extra_id=0, ax=None):
     """
     Visualize a key signal (flow rate or pressure) with plug events highlighted, and optionally extra vertical lines for specific times based on extra_id.
+    Used when labeling data.
     - `data`: DataFrame containing the data to plot
     - `plug_column`: Column name indicating plug events (default is target_col)
     - `key`: Column name of the signal to plot (default is "Flow rate (Mean)")
@@ -218,8 +175,6 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
         ax.axvline(pd.to_datetime("1900-01-01 13:56"), color="pink", linestyle="--", label="Time = 13:56")
         ax.axvline(pd.to_datetime("1900-01-01 18:00"), color="pink", linestyle="--", label="Time = 18:00")
 
-
-
     ax.set_title(f"{name}" if name else actual_key)
     ax.set_xlabel("Time")
     ax.set_ylabel("Value")
@@ -230,8 +185,8 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
         plt.show()
 
 
-
 def visualize_predicted_vs_true(df, y_pred, model_name=None, plotLabel=True, flow_rate_missing=False):
+    """Visualize predicted vs true plug events on top of flow rate and pressure signals, with optional vertical lines for specific times based on dataset ID. Used for prediction visualization."""
     plt.figure(figsize=(12,6))
 
     flow_col = "Flow rate (Mean)"
@@ -292,130 +247,20 @@ def visualize_predicted_vs_true(df, y_pred, model_name=None, plotLabel=True, flo
     plt.show()
 
 
-def plot_correlation_matrix(corr, horizon, annotations=False):
-    '''Plot correlation matrix of features to identify relationships'''
-
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(corr, annot=annotations, cmap="coolwarm", fmt=".2f", cbar=True)
-    plt.title(f'Feature Correlation Matrix - Horizon: {horizon}')
-    plt.tight_layout()
-    plt.savefig(f"plots/correlation_matrix_{horizon}.png", dpi=300)
-    plt.close()
-
-
-def plot_confusion_matrix(y_true, y_pred, standalone=True, ax=None, labels=None):
-    '''Plot confusion matrix'''
-    cm = confusion_matrix(y_true, y_pred)
-
-    if ax is None:
-        _, ax = plt.subplots()
-
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.set_title("Confusion Matrix")
-
-    if standalone:
-        plt.show()
-
-
-def get_y_scores(model, X):
-    """Returns continuous scores for PR / Calibration curves."""
-    
-    if hasattr(model, "predict_proba"):
-        return model.predict_proba(X)[:, 1]
-    elif hasattr(model, "decision_function"):
-        return model.decision_function(X)
-    else:
-        raise ValueError(
-            f"Model {type(model).__name__} does not provide probability or decision scores."
-        )
-
-
-def plot_precision_recall_curve(y_true, y_scores, standalone=True, ax=None):
-    precision, recall, _ = precision_recall_curve(y_true, y_scores)
-    avg_precision = average_precision_score(y_true, y_scores)
-
-    if ax is None:
-        _, ax = plt.subplots()
-
-    ax.plot(recall, precision, label=f"AP = {avg_precision:.2f}")
-    ax.set_xlabel("Recall")
-    ax.set_ylabel("Precision")
-    ax.set_title("Precision-Recall Curve")
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1.05)
-    ax.legend()
-
-    if standalone:
-        plt.show()
-
-
-def learning_curve(train_sizes, train_scores, val_scores, standalone=True, ax=None):
-    train_mean = np.mean(train_scores, axis=1)
-    val_mean = np.mean(val_scores, axis=1)
-
-    if ax is None:
-        _, ax = plt.subplots()
-
-    ax.plot(train_sizes, train_mean, 'o-', label="Training")
-    ax.plot(train_sizes, val_mean, 'o-', label="Validation")
-    ax.set_xlabel("Training Set Size")
-    ax.set_ylabel("Score")
-    ax.set_title("Learning Curve")
-    ax.legend()
-    ax.grid()
-
-    if standalone:
-        plt.show()
-
-
-def plot_calibration_curve(y_true, y_scores, n_bins=10, standalone=True, ax=None):
-    prob_true, prob_pred = calibration_curve(y_true, y_scores, n_bins=n_bins)
-
-    if ax is None:
-        _, ax = plt.subplots()
-
-    ax.plot(prob_pred, prob_true, marker='o', label='Model')
-    ax.plot([0, 1], [0, 1], linestyle='--', label='Perfect')
-    ax.set_xlabel("Predicted Probability")
-    ax.set_ylabel("True Fraction")
-    ax.set_title("Calibration Curve")
-    ax.legend()
-    ax.grid()
-
-    if standalone:
-        plt.show()
-
-
-def plot_all(model, X_test, y_test, train_sizes, train_scores, val_scores):
-    y_pred = model.predict(X_test)
-    y_scores = get_y_scores(model, X_test)
-
-    _, ax = plt.subplots(2, 2, figsize=(18, 10))
-
-    plot_confusion_matrix(y_test, y_pred, standalone=False, ax=ax[0, 0])
-    learning_curve(train_sizes, train_scores, val_scores, standalone=False, ax=ax[1, 0])
-    plot_precision_recall_curve(y_test, y_scores, standalone=False, ax=ax[0, 1])
-    plot_calibration_curve(y_test, y_scores, standalone=False, ax=ax[1, 1])
-
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_feature_importance(
-    model,
-    X: pd.DataFrame,
-    y,
-    horizon, 
-    method: str = "auto",
-    top_n: int = 25,
-    scoring: str = "f1",
-    n_repeats: int = 5,
-    random_state: int = seed,
-    drop_cols: tuple[str, ...] = ("LogId",),
-    figsize=(9, 7),
+def plot_feature_importance(model, X, y, horizon, 
+    method = "auto",
+    top_n = 25,
+    scoring = "f1",
+    n_repeats = 5,
+    random_state = seed,
+    drop_cols = ("LogId",),
+    figsize = (9, 7),
 ):
+    """
+    Calculate and plot feature importance using either model-based importance or permutation importance.
+    Returns a DataFrame with the top features and their importance scores, 
+    and saves a bar plot of feature importance to "plots/feature_importance/{horizon}.png".
+    """
 
     Xp = X.drop(columns=[c for c in drop_cols if c in X.columns]).copy()
     feature_names = Xp.columns.to_list()
@@ -439,7 +284,6 @@ def plot_feature_importance(
             scoring=scoring,
             n_repeats=n_repeats,
             random_state=random_state,
-            n_jobs=-1,
         )
         importances = pi.importances_mean
         title = f"Permutation importance (scoring={scoring})"
@@ -457,6 +301,7 @@ def plot_feature_importance(
     plt.xlabel("Importance")
     plt.tight_layout()
 
+    os.makedirs("plots/feature_importance", exist_ok=True)
     plt.savefig(f"plots/feature_importance/{horizon}.png", dpi=300)
     plt.close()
 
@@ -464,7 +309,12 @@ def plot_feature_importance(
 
 
 ### VISUALIZING RESULTS FOR PREDICT_ALL ###
-def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)", show_flow=True):
+def plot_one(ax, df, y_pred, figureNum, y, dataset_id = None, flow_col="Flow rate (Mean)", pressure_col="Pump outlet pressure (Mean)", show_flow=True):
+    """
+    Plot flow rate and pressure with true and predicted plug events for one dataset on a given axis.
+    Used as a helper function for plot_all_predictions to create subplots for each dataset.
+    """
+
     if flow_col not in df.columns:
         flow_col = "flow_rate"
 
@@ -478,8 +328,6 @@ def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col
             pressure_col = None
         elif "TS outlet pressure (Mean)_std" in pressure_candidates:
             pressure_col = "TS outlet pressure (Mean)_std"
-        else:
-            pressure_col = pressure_candidates[0]
 
     # Determine if this dataset is part of training or test set for labeling the plot
     shown_id = dataset_id if dataset_id is not None else figureNum
@@ -487,82 +335,270 @@ def plot_one(df, y_pred, figureNum, y, nrows, ncols, dataset_id = None, flow_col
     test_set_nr = max(dataset_nrs)
     test_set_nrs = test_sets if test_sets else [test_set_nr]
     train_set_nrs = [nr for nr in dataset_nrs if nr not in test_set_nrs]
-
-    # Create subplot
-    plt.subplot(nrows, ncols, figureNum)
     
     if flow_col in df.columns:
-        plt.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5)
+        ax.plot(df.index, df[flow_col], label="Flow rate", alpha=0.5, color="steelblue")
     elif pressure_col in df.columns: 
-        plt.plot(df.index, df[pressure_col], label="Pump outlet pressure", alpha=0.5)
+        ax.plot(df.index, df[pressure_col], label="TS outlet pressure (Mean)_std", alpha=0.5, color="darkorange")
 
     # Highlight true Plug events, on training data
     true_plug_events = df[y == 1]
     if shown_id not in test_set_nrs:
-        if flow_col in df.columns: 
-            plt.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
-        if pressure_col in df.columns:
-            plt.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
+        if flow_col and flow_col in df.columns: 
+            ax.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+        elif pressure_col and pressure_col in df.columns:
+            ax.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
     
     # Highlight predicted Plug events, on all data
     plug_events = df[y_pred == 1]
-    if flow_col in df.columns:
-        plt.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
-    if pressure_col in df.columns:
-        plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  
+    if flow_col and flow_col in df.columns:
+        ax.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
+    elif pressure_col and pressure_col in df.columns:
+        ax.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')  
      
-    plt.xlabel("Elapsed_seconds")
+    ax.set_xlabel("Elapsed_seconds")
 
     labels = []
 
     if flow_col and show_flow:
         labels.append("Flow rate [kg/h]")
-    if pressure_col:
+    if pressure_col and not show_flow:
         labels.append("Pressure [Pa]")
 
     ylabel = " / ".join(labels) if labels else "Sensor value"
-    plt.ylabel(ylabel)
+    ax.set_ylabel(ylabel)
 
     if shown_id in test_set_nrs:
-        plt.title(f"Data nr {shown_id} [test set]")
+        ax.set_title(f"Data nr {shown_id} [test set]")
     else:
-        plt.title(f"Data nr {shown_id}" if shown_id not in train_set_nrs else f"Data nr {shown_id} [training set]")
-    plt.legend()
+        ax.set_title(f"Data nr {shown_id}" if shown_id not in train_set_nrs else f"Data nr {shown_id} [training set]")
+
 
 def plot_all_predictions(X_y_list, y_preds, dataset_ids, flow_rate_missing_sets, samples, model, runId):
+    """
+    Plots predicted vs true events for all given datasets in one figure, with subplots for each dataset.
+    
+    - `X_y_list`: List of tuples (X, y, flow) for each dataset, where X is the feature DataFrame, y is the true target array, and flow is the flow rate array (if available).
+    - `y_preds`: List of predicted target arrays corresponding to each dataset in X_y_list.
+    - `dataset_ids`: List of dataset IDs corresponding to each dataset in X_y_list, used for labeling the subplots.
+    - `flow_rate_missing_sets`: Set of dataset IDs for which flow rate data is missing, used to determine whether to show flow rate in the plots.
+    - `samples`: Number of samples used for training, included in the overall title of the figure.
+    - `model`: The trained model, used for including the model name in the overall title of the figure.
+    - `runId`: Unique identifier for the run, used for saving the figure with a specific name.
+    """
     n_plots = len(X_y_list)  
-    ncols = 5                
+    ncols = 3 if n_plots >= 3 else 2                
     nrows = math.ceil(n_plots / ncols)
 
-    plt.figure(figsize=(4*ncols, 3.2*nrows))  
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4*ncols, 3.2*nrows))
+    axes = axes.flatten()
+
+    # Hide any unused subplots
+    for i in range(n_plots, len(axes)):
+        axes[i].set_visible(False)
 
     for subplot_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids), start=1):
         X["flow_rate"] = flow
-        plot_one(X, y_pred, subplot_idx, y, nrows, ncols, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
+        plot_one(axes[subplot_idx-1], X, y_pred, subplot_idx, y, dataset_id=dataset_id, show_flow=(dataset_id not in flow_rate_missing_sets))
    
-    plt.subplots_adjust(hspace=0.5)
+    # Shared legend: merge unique handles from all subplots
+    seen = set()
+    handles, labels = [], []
+    for ax in axes:
+        for h, l in zip(*ax.get_legend_handles_labels()):
+            if l not in seen:
+                seen.add(l)
+                handles.append(h)
+                labels.append(l)
+
+    if "test" in runId:
+        fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(0.100, 0.100), ncol=1, fontsize=12)
+        plt.subplots_adjust(hspace=0.7, top=0.90)
+    else:
+        fig.legend(handles, labels, loc='lower right', bbox_to_anchor=(0.95, 0.10), ncol=1, fontsize=12)
+        plt.subplots_adjust(hspace=0.5, top=0.90)
 
     # Save the plot
-    plt.suptitle(f"Predicted vs True {target_col}=1 Events for {samples} samples using {str(type(model).__name__)}")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(f"plots/{runId}.png", dpi=300)
+    plt.savefig(f"plots/{runId}.png", dpi=300, bbox_inches='tight')
     print(f"Plot saved as plots/{runId}.png")
     plt.close()
 
 
+def plot_test_data_summary(X_y_list, y_preds, dataset_ids, flow_rate_missing_sets, runId):
+    n_plots = len(X_y_list)
+    ncols = n_plots
+    nrows = 2  
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 3.2 * nrows))
+
+    if n_plots == 1:
+        axes = [[axes[0]], [axes[1]]]
+    else:
+        axes = [list(axes[0]), list(axes[1])]
+
+    for col_idx, ((X, y, flow), y_pred, dataset_id) in enumerate(zip(X_y_list, y_preds, dataset_ids)):
+        X = X.copy()
+        X["flow_rate"] = flow
+        show_flow = dataset_id not in flow_rate_missing_sets
+
+        flow_col = "Flow rate (Mean)" if "Flow rate (Mean)" in X.columns else "flow_rate"
+        if not show_flow:
+            flow_col = None
+
+        pressure_candidates = X.columns[X.columns.str.contains("press", case=False, na=False)]
+        if len(pressure_candidates) == 0:
+            pressure_col = None
+        elif "TS outlet pressure (Mean)_std" in pressure_candidates:
+            pressure_col = "TS outlet pressure (Mean)_std"
+        else:
+            pressure_col = pressure_candidates[0]
+
+        ylabel_parts = []
+        if flow_col and show_flow:
+            ylabel_parts.append("Flow rate [kg/h]")
+        elif pressure_col:
+            ylabel_parts.append("Pressure [Pa]")
+        ylabel = " / ".join(ylabel_parts) if ylabel_parts else "Sensor value"
+        title_base = f"Data nr {dataset_id} [test set]"
+
+        # --- Row 1: True labels ---
+        ax_true = axes[0][col_idx]
+        if flow_col and flow_col in X.columns:
+            ax_true.plot(X.index, X[flow_col], label="Flow rate", alpha=0.5, color="steelblue")
+        elif pressure_col and pressure_col in X.columns:
+            ax_true.plot(X.index, X[pressure_col], label="TS outlet pressure (Mean)_std", alpha=0.5, color="darkorange")
+
+        true_plug_events = X[y == 1]
+        if flow_col and flow_col in X.columns:
+            ax_true.scatter(true_plug_events.index, true_plug_events[flow_col], color="red", label="True Plug=1 (Flow)", zorder=6, marker='x')
+        elif pressure_col and pressure_col in X.columns:
+            ax_true.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x')
+
+        ax_true.set_xlabel("Elapsed_seconds")
+        ax_true.set_ylabel(ylabel)
+        ax_true.set_title(f"{title_base}\n[True labels]")
+
+        # --- Row 2: Predictions ---
+        ax_pred = axes[1][col_idx]
+        if flow_col and flow_col in X.columns:
+            ax_pred.plot(X.index, X[flow_col], label="Flow rate", alpha=0.5, color="steelblue")
+        elif pressure_col and pressure_col in X.columns:
+            ax_pred.plot(X.index, X[pressure_col], label="TS outlet pressure (Mean)_std", alpha=0.5, color="darkorange")
+
+        plug_events = X[y_pred == 1]
+        if flow_col and flow_col in X.columns:
+            ax_pred.scatter(plug_events.index, plug_events[flow_col], color="yellow", label="Predicted plug (Flow)", zorder=7, marker='.')
+        elif pressure_col and pressure_col in X.columns:
+            ax_pred.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.')
+
+        ax_pred.set_xlabel("Elapsed_seconds")
+        ax_pred.set_ylabel(ylabel)
+        ax_pred.set_title(f"{title_base}\n[Predictions]")
+
+    # Shared legend
+    seen = set()
+    all_handles, all_labels = [], []
+    for ax in axes[0] + axes[1]:
+        for h, l in zip(*ax.get_legend_handles_labels()):
+            if l not in seen:
+                seen.add(l)
+                all_handles.append(h)
+                all_labels.append(l)
+
+    axes[0][0].annotate("True labels", xy=(-0.35, 0.5), xycoords='axes fraction',
+                        fontsize=12, fontweight='bold', ha='center', va='center', rotation=90)
+    axes[1][0].annotate("Predictions", xy=(-0.35, 0.5), xycoords='axes fraction',
+                        fontsize=12, fontweight='bold', ha='center', va='center', rotation=90)
+
+    for col_idx, dataset_id in enumerate(dataset_ids):
+        axes[0][col_idx].set_title(f"Dataset {dataset_id}")
+        axes[1][col_idx].set_title("") 
+
+    fig.legend(all_handles, all_labels, loc='lower center', bbox_to_anchor=(0.5, -0.05),
+               ncol=3, fontsize=11)
+
+    plt.subplots_adjust(hspace=0.4, top=0.90, bottom=0.12)
+    plt.tight_layout(rect=[0.05, 0.08, 1, 0.95])
+
+    plt.savefig(f"plots/test_sets/{runId}.png", dpi=300, bbox_inches='tight')
+    print(f"Plot saved as plots/test_sets/{runId}.png")
+    plt.close()
+
+## F1 score bar plots
+
 def f1_score_bar_plot(dataset_ids, f1scores, runId):
+    """
+    Plots a bar plot of F1 scores for each dataset ID, comparing predicted vs true events where target_col=1.
+    Plots the data from one model. 
+    """
     plt.figure(figsize=(8, 5))
-    plt.bar([str(id) for id in dataset_ids], f1scores, color='skyblue')
+    bar  = plt.bar([str(id) for id in dataset_ids], f1scores, color='skyblue')
+    for rect, score in zip(bar, f1scores):
+        height = rect.get_height()
+        plt.text(rect.get_x() + rect.get_width() / 2.0, height / 2, f"{score:.3f}", ha='center', va='center', color='black', fontsize=10, rotation=90)
     plt.xlabel('Dataset ID')
     plt.ylabel('F1 Score')
-    plt.title(f'F1 Scores for Predicted vs True {target_col}=1 Events')
     plt.ylim(0, 1)
+    os.makedirs("plots/f1_scores", exist_ok=True)
     plt.savefig(f"plots/f1_scores/{runId}.png", dpi=300)
     print(f"F1 score plot saved as plots/f1_scores/{runId}.png")
     plt.close()
 
-## Horizon
 
+def f1_score_bar_plot_comparison(dataset_ids, f1scores_dict, name=None):
+    """
+    Plots a bar plot comparing F1 scores for each dataset ID across multiple models.
+    f1scores_dict should be a dictionary where keys are model names and values are lists of F1 scores corresponding to dataset_ids.
+    """
+    x = np.arange(len(dataset_ids))  
+    width = 0.25  
+
+    plt.figure(figsize=(10, 6))
+
+    for i, (model_name, f1scores) in enumerate(f1scores_dict.items()):
+        bars = plt.bar(x + i*width, f1scores, width=width, label=model_name)
+
+        if len(next(iter(f1scores_dict.values()))) <= 4: # Only add text if there are 4 or fewer datasets to avoid clutter
+            for bar, score in zip(bars, f1scores):
+                plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() / 2, f"{score:.3f}", ha='center', va='center', color='black', fontsize=8)
+
+    plt.xlabel('Dataset ID')
+    plt.ylabel('F1 Score')
+    plt.xticks(x + width * (len(f1scores_dict) - 1) / 2, [str(id) for id in dataset_ids])
+    plt.ylim(0, 1)
+    plt.legend()
+    os.makedirs("plots/f1_scores", exist_ok=True)
+    if name:
+        plt.savefig(f"plots/f1_scores/comparison_{name}.png", dpi=300)
+    else:
+        plt.savefig("plots/f1_scores/comparison.png", dpi=300)
+    print("F1 score comparison plot saved as plots/f1_scores/comparison.png")
+    plt.close()
+
+
+def f1_score_line_plot_comparison(dataset_ids, f1scores_dict):
+    """
+    Plots a line plot of F1 scores for each dataset ID, comparing predicted vs true events where target_col=1.
+    f1scores_dict should be a dictionary where keys are model names and values are lists of F1 scores corresponding to dataset_ids.
+    """
+
+    plt.figure(figsize=(10, 6))
+
+    for model_name, f1scores in f1scores_dict.items():
+        plt.plot([str(id) for id in dataset_ids], f1scores, marker='o', label=model_name)
+
+    plt.xlabel('Dataset ID')
+    plt.ylabel('F1 Score')
+    plt.ylim(0, 1)
+    plt.legend()
+    os.makedirs("plots/f1_scores", exist_ok=True)
+    plt.savefig("plots/f1_scores/comparison_line_plot.png", dpi=300)
+    print("F1 score comparison line plot saved as plots/f1_scores/comparison_line_plot.png")
+    plt.close()
+
+
+## -------- Horizon -----------
 def plot_test_f1_vs_horizon(
     horizons,
     test_scores,
@@ -581,7 +617,6 @@ def plot_test_f1_vs_horizon(
 
     plt.xlabel("Prediction Horizon samples (seconds)")
     plt.ylabel("F1 Score (Test Set)")
-    plt.title("Test F1 vs Prediction Horizon")
     plt.legend()
     plt.grid(True)
 
@@ -589,7 +624,7 @@ def plot_test_f1_vs_horizon(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
-
+    os.makedirs("plots/horizon_test", exist_ok=True)
     plt.savefig("plots/horizon_test/f1_scores_line_plot.png", dpi=300)
     plt.close()
 
@@ -620,7 +655,6 @@ def plot_test_f1_vs_horizon_bar(
 
     plt.xlabel("Prediction Horizon samples (seconds)")
     plt.ylabel("F1 Score (Test Set)")
-    plt.title("Test F1 vs Prediction Horizon")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
 
     horizon_seconds = [f"{h} ({h // 2}s)" for h in horizons]
@@ -630,6 +664,6 @@ def plot_test_f1_vs_horizon_bar(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
+    os.makedirs("plots/horizon_test", exist_ok=True)
     plt.savefig("plots/horizon_test/f1_scores_bar_plot.png", dpi=300)
     plt.close()
-

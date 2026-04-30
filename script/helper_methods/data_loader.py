@@ -128,9 +128,10 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     '''Save datasets to CSV files'''
+    os.makedirs(base_path, exist_ok=True)
     for key, df in data.items():
         df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
-    print(f"💾 Saved data with base name: {dataset_name}")
+    print(f"💾 Saved data with base name: {dataset_name} to location {base_path}")
 
 
 def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
