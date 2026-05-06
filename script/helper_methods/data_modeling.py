@@ -1,3 +1,7 @@
+"""
+This module contains the main data modeling pipeline, including hyperparameter tuning with randomized search and time series cross-validation. 
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -15,12 +19,15 @@ from script.helper_methods.config import get_config
 cfg = get_config()
 seed = cfg["experiment"]["random_state"]
 n_iter = cfg["experiment"]["n_iter"]
+HORIZON = cfg["experiment"]["horizon"]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
 def leave_one_run_out_cv(groups):
-    '''Leaves out all samples from one group (run) for testing in each fold'''
+    '''
+    Leaves out all samples from one group (run) for testing in each fold
+    Used for RandomSearchCV to split the data into folds. 
+    '''
 
     groups = np.asarray(groups)
     for g in np.unique(groups):
@@ -30,9 +37,9 @@ def leave_one_run_out_cv(groups):
 
 
 def tune_random_search(model, X_train, y_train, params, n_iter=40):
-    '''Perform Randomized Search with Time Series CV'''
+    '''Perform Randomized Search with definde CV function and return best model, params and score'''
 
-    cv = list(leave_one_run_out_cv(X_train["LogId"]))
+    cv = list(leave_one_run_out_cv(X_train["LogId"])) # Splitting into folds
     
     # Scoring metrics
     scoring = {
@@ -42,12 +49,14 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
     X_train = X_train.drop(columns=['LogId']) # drop LogId for modeling
 
+    # Print class distribution in each fold
     for tr, te in cv:
         print(
             "train pos:", (y_train.iloc[tr] == 1).sum(),
             "test pos:",  (y_train.iloc[te] == 1).sum()
         )
 
+    # Run Randomized Search
     search = RandomizedSearchCV(
         estimator=model,
         param_distributions=params,
@@ -72,6 +81,7 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
     print("Best F1 score:", search.best_score_)
 
+    # Print all CV results for F1-score
     cv_results = pd.DataFrame(search.cv_results_)
     print(cv_results.filter(regex="split"))
 
@@ -79,20 +89,28 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
 
 def find_best_model(X_train, y_train):
-    '''Compare multiple models with hyperparameter tuning and return the best one'''
+    '''
+    Compare multiple models with hyperparameter tuning and return the best one.
+    Using Randomized Search with CV (leave-one-run-out) to find the best model and hyperparameters based on validation F1 score.
+    Also includes a DummyClassifier as a baseline for comparison.
+    Prints the best model, its parameters, and validation F1 score, as well as saves a summary of all models and their best validation scores. 
+    Saves the best model and the baseline model for later
+    '''
 
-    models, hyperparameters = get_models_and_params(y_train)
+    models, hyperparameters = get_models_and_params(y_train) # Get models and their hyperparameter search spaces
 
     best_of_all_models = {}
 
+    # Loop through each model, perform hyperparameter tuning, and store the best model, its parameters, and validation score
     for name, model in models.items():
         print(f"\n🔍 Tuning {name}...")
-        if isinstance(model, DummyClassifier):
+        if isinstance(model, DummyClassifier): # No tuning for dummy model, just fit and evaluate as baseline
             print("Dummy model - baseline")
             best_model = model.fit(X_train.drop(columns=['LogId']), y_train)
             best_params = model.get_params()
             best_score = f1_score(y_train, best_model.predict(X_train.drop(columns=['LogId'])), average='weighted')
         else:   
+            # Perform hyperparameter tuning for other models
             best_model, best_params, best_score = tune_random_search(
                 model,
                 X_train, y_train,
@@ -116,6 +134,7 @@ def find_best_model(X_train, y_train):
     for item in summary:
         print(f"{item['Model']}: {item['Best Validation F1 Score']:.4f}")
 
+    # Identify the best overall model (excluding Dummy) based on validation F1 score
     best_model_name = max((name for name in best_of_all_models if name != "Dummy"), key=lambda k: best_of_all_models[k][2])
     print(f"\n🏆 Best overall model: {best_model_name} with validation F1 Score: {best_of_all_models[best_model_name][2]:.4f}")
     
@@ -123,18 +142,20 @@ def find_best_model(X_train, y_train):
 
 
 
-def model_data(X_train, y_train, X_test, y_test, horizon="default_run"):
-    '''Full modeling pipeline: find best model, retrain on train+val, evaluate on test'''
+def model_data(X_train, y_train, X_test, y_test, horizon=HORIZON):
+    '''Full modeling pipeline: find best model, calculate feature importances, evaluate on test'''
 
     best_of_all_models, best_model_name = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
     best_model = best_of_all_models[best_model_name][0]
 
+    # Save best model as well as all models for later use and comparison
     save_model(best_model)
     save_model(best_of_all_models["Dummy"][0], model_name="dummy")
     save_model(best_of_all_models["Random Forest"][0], model_name="rf")
     save_model(best_of_all_models["XGBoost"][0], model_name="xgboost")
     print("Best model name: " + type(best_model).__name__ + " with parameters: " + str(best_model.get_params()))
-
+    
+    # Calculate and print feature importances for the best model using permutation importance
     imp = dv.plot_feature_importance(
         best_model,
         X_train,
@@ -145,10 +166,15 @@ def model_data(X_train, y_train, X_test, y_test, horizon="default_run"):
     )
     print(imp)
 
-    X_test.drop(columns=['LogId'], inplace=True)
-   
+    # Generate SHAP summary plot for the best model
+    dv.plot_shap_summary(best_model, X_train.drop(columns=['LogId']), save_path=f"plots/shap_summary_{horizon}.png")
+    
+    X_test.drop(columns=['LogId'], inplace=True) # drop LogId for evaluation
+
+    # Evaluate the best model on the test set and print the F1 score.
     _, f1_score_value = evaluate_model_on_test(best_model, X_test, y_test)
 
-    evaluate_all_models(best_of_all_models, X_test, y_test, horizon)
-    
+    if horizon == HORIZON: # Only evaluate all models on test set for the default horizon
+        evaluate_all_models(best_of_all_models, X_test, y_test, horizon)
+
     return best_model, f1_score_value

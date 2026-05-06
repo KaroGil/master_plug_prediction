@@ -1,26 +1,29 @@
+"""
+This script compares the predictions of the three models (baseline, RF and XGBoost) on all datasets. 
+It calculates the F1-scores for each dataset and visualizes them as bar plots. 
+It also performs a false alarm analysis on the test datasets and identifies low-performing datasets for further analysis.
+"""
+
 import joblib
 import pandas as pd
 from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
-from script.helper_methods.model_evaluation import false_alarm_analysis, per_dataset_statistics
+from script.helper_methods.model_evaluation import false_alarm_analysis, per_dataset_statistics, print_class_distribution_across_datasets
 from script.helper_methods.data_visualization import f1_score_bar_plot_comparison, f1_score_line_plot_comparison
 from script.helper_methods.check_low_performers import analyse_low_performing_datasets
 from script.preprocess_predict import preped_for_prediction_exists, preprocess_and_save
 
 # Load config
 cfg = get_config()
-target_col = cfg["data"]["target"]
 datasets = cfg["data"]["datasets"]
-horizon = cfg["experiment"]["horizon"]
-flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
 test_sets = cfg["data"]["test_sets"]
+frequency_hz = cfg["data"]["frequency"]
 
 BASE_PATH = "data/labeled/labeled_"
 BASE_PATH_PREPROCESSED_PREDICT = "data/processed_data/predict/"
 
-#NB! If train.py is run again with a different set of datasets the saved datasets in data/processed_data/predict/ have to be 
-# deleted so new can be made and the prediction is run on the correct datasets.
 if preped_for_prediction_exists():
+    # If preprocessed data already exists, load it instead of preprocessing again
     print("Preprocessed data already exists. Skipping preprocessing.")
     dataset_ids = []
     X_y_list = []
@@ -28,9 +31,9 @@ if preped_for_prediction_exists():
         dataset_ids.append(i)
         X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
         y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-        flow = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_flow_rate.csv").squeeze()
-        X_y_list.append((X, y, flow))
+        X_y_list.append((X, y))
 else:
+    # If preprocessed data does not exist, preprocess and save it, then load it
     print("Preprocessed data does not exist. Starting preprocessing.")
     preprocess_and_save() #First preprocess and save the data, then load it
     dataset_ids = []
@@ -39,10 +42,9 @@ else:
         dataset_ids.append(i)
         X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
         y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-        flow = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_flow_rate.csv").squeeze()
-        X_y_list.append((X, y, flow))
+        X_y_list.append((X, y))
 
-# # Load data
+# Load data
 print("💾 Loading multiple datasets for prediction...")
 data_list = []
 dataset_ids = []
@@ -70,7 +72,8 @@ f1score_baseline = []
 f1scores_RF = []
 f1scores_XGBoost = []
 
-for dataset_id, (X, y, _) in zip(dataset_ids, X_y_list):
+# Iterate through all datasets, make predictions and calculate F1-scores for each model
+for dataset_id, (X, y) in zip(dataset_ids, X_y_list):
     prediction_baseline = model_baseline.predict(X)
     prediction_RF = model_RF.predict(X)
     prediction_XGBoost = model_XGBoost.predict(X)
@@ -89,19 +92,25 @@ for dataset_id, (X, y, _) in zip(dataset_ids, X_y_list):
 
     print(f"F1-score for dataset {dataset_id} run was {f1_baseline} for baseline, {f1_RF} for RF and {f1_XGBoost} for XGBoost")
 
-# Visualize predictions as bar plot comparing the F1-scores of the different datasets for the three model
-print("📊 Visualizing f1-scores as bar plots...")
+# Print class distribution across datasets
+print_class_distribution_across_datasets(dataset_ids, X_y_list)
+
+# Visualize predictions as bar plot comparing the F1-scores of the different datasets for the three models
+# All datasets
+print("\n📊 Visualizing f1-scores as bar plots...")
 f1_score_bar_plot_comparison(dataset_ids, {
     "Random Forest": f1scores_RF,
     "XGBoost": f1scores_XGBoost
 })
 
+# Test datasets only
 test_indices = [dataset_ids.index(i) for i in test_sets]
 f1_score_bar_plot_comparison(test_sets, {
     "Random Forest": [f1scores_RF[i] for i in test_indices],
     "XGBoost": [f1scores_XGBoost[i] for i in test_indices]
 }, name="test_sets")
 
+# Visualize predictions as line plot comparing the F1-scores of the different datasets for the three model
 f1_score_line_plot_comparison(dataset_ids, {
     "Random Forest": f1scores_RF,
     "XGBoost": f1scores_XGBoost
@@ -124,7 +133,7 @@ for idx, ds_id in zip(test_indices, test_sets):
         y_true=X_y_list[idx][1],  
         y_pred=y_preds_XGBoost[idx],
         dataset_id=ds_id,
-        sample_rate_hz=2,
+        sample_rate_hz=frequency_hz,
         model_name="XGBoost"
     )
 
@@ -133,24 +142,23 @@ for idx, ds_id in zip(test_indices, test_sets):
         y_true=X_y_list[idx][1],  
         y_pred=y_preds_RF[idx],
         dataset_id=ds_id,
-        sample_rate_hz=2,
+        sample_rate_hz=frequency_hz,
         model_name="RF"
     )
 
 # Low performers analysis
 print("\n📊 Analyzing low-performing datasets...")
-analyse_low_performing_datasets(
+low_ds_ids = analyse_low_performing_datasets(
     dataset_ids,
     {
         "Random Forest": f1scores_RF,
         "XGBoost":       f1scores_XGBoost,
     },
     X_y_list,
-    threshold=0.8
+    threshold=0.95
 )
 
 raw_data = {ds_id: data_list[i] for i, ds_id in enumerate(dataset_ids)}
-low_ds_ids = [16] # Set manually!  
 low_indices = [dataset_ids.index(i) for i in low_ds_ids]
 
 for idx, ds_id in zip(low_indices, low_ds_ids):
@@ -158,6 +166,13 @@ for idx, ds_id in zip(low_indices, low_ds_ids):
         y_true=X_y_list[idx][1],  
         y_pred=y_preds_RF[idx],
         dataset_id=ds_id,
-        sample_rate_hz=2,
+        sample_rate_hz=frequency_hz,
         model_name="RF"
+    )
+    false_alarm_analysis(
+        y_true=X_y_list[idx][1],  
+        y_pred=y_preds_XGBoost[idx],
+        dataset_id=ds_id,
+        sample_rate_hz=frequency_hz,
+        model_name="XGBoost"
     )
