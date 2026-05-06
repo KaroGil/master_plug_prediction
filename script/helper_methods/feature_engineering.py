@@ -1,3 +1,9 @@
+"""
+Helper methods for feature engineering, 
+including functions to create derived features.
+Also includes a function to calculate a plug index based on pressure drop and flow rate, 
+which can be used as an additional feature for plug prediction models.
+"""
 import numpy as np
 import pandas as pd
 from script.helper_methods.config import get_config
@@ -13,12 +19,15 @@ def add_time_derivative_features(df, time_col="Time"):
     Add first and second time derivative features for all numeric columns in the DataFrame.
     Assumes 'time_col' is in datetime format (e.g., '1900-01-01 11:07:40.450') and sorted.
     """
+    # Ensure time column is in datetime format and calculate time differences in seconds
     df[time_col] = pd.to_datetime(df[time_col])
     time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  
-
+    
+    # Get numeric columns excluding non-feature columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     numeric_cols = [col for col in numeric_cols if col not in non_feature_columns]  # Exclude non-feature columns
 
+    # Calculate first and second derivatives for each numeric column
     for col in numeric_cols:
         first_derivative = (df[col].diff() / time_diffs).replace([np.inf, -np.inf], np.nan)
         second_derivative = (first_derivative.diff() / time_diffs).replace([np.inf, -np.inf], np.nan)
@@ -37,7 +46,7 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
     ΔP = P_outlet - P_inlet
     """
 
-    df["TS_in_changed_out"] = 0
+    df["TS_in_changed_out"] = 0 # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
 
     if inlet_col not in df.columns:
         inlet_col = "Pump outlet pressure (Mean)"
@@ -66,7 +75,7 @@ def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", ou
     Calculate normalized pressure drop across the pump as a feature.
     Normalized ΔP = (P_outlet - P_inlet) / P_inlet
     """
-    df["TS_in_changed_out"] = 0
+    df["TS_in_changed_out"] = 0 # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
 
     if inlet_col not in df.columns:
         inlet_col = "Pump outlet pressure (Mean)"
@@ -142,7 +151,7 @@ def feature_engineering_pipeline(df):
 
     return df
 
-
+#TODO: remove flow rate from this file, as it was dropped and only pressure-related features were used. 
 def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
     """
     Function to calculate Plug Index based on pressure drop and flow rate.

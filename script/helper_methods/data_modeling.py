@@ -24,12 +24,14 @@ HORIZON = cfg["experiment"]["horizon"]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def leave_one_run_out_cv(groups):
-    '''
-    Leaves out all samples from one group (run) for testing in each fold
-    Used for RandomSearchCV to split the data into folds. 
-    '''
+    """
+    Custom cross-validation generator that implements a leave-one-run-out strategy for time series data. 
+    Each unique group (run) is left out as the test set while the remaining groups are used for training in each fold.
+    """
 
-    groups = np.asarray(groups)
+    groups = np.asarray(groups) # Ensure groups is a numpy array for indexing
+    
+    # Loop through each unique group and yield train/test indices for that group
     for g in np.unique(groups):
         test_idx  = np.where(groups == g)[0]
         train_idx = np.where(groups != g)[0]
@@ -37,7 +39,7 @@ def leave_one_run_out_cv(groups):
 
 
 def tune_random_search(model, X_train, y_train, params, n_iter=40):
-    '''Perform Randomized Search with definde CV function and return best model, params and score'''
+    """Perform Randomized Search with definde CV function and return best model, params and score"""
 
     cv = list(leave_one_run_out_cv(X_train["LogId"])) # Splitting into folds
     
@@ -89,13 +91,13 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
 
 
 def find_best_model(X_train, y_train):
-    '''
+    """
     Compare multiple models with hyperparameter tuning and return the best one.
     Using Randomized Search with CV (leave-one-run-out) to find the best model and hyperparameters based on validation F1 score.
     Also includes a DummyClassifier as a baseline for comparison.
     Prints the best model, its parameters, and validation F1 score, as well as saves a summary of all models and their best validation scores. 
     Saves the best model and the baseline model for later
-    '''
+    """
 
     models, hyperparameters = get_models_and_params(y_train) # Get models and their hyperparameter search spaces
 
@@ -143,7 +145,7 @@ def find_best_model(X_train, y_train):
 
 
 def model_data(X_train, y_train, X_test, y_test, horizon=HORIZON):
-    '''Full modeling pipeline: find best model, calculate feature importances, evaluate on test'''
+    """Full modeling pipeline: find best model, calculate feature importances, evaluate on test"""
 
     best_of_all_models, best_model_name = find_best_model(X_train, y_train.squeeze()) # squeeze bc loading from csv adds extra dimension
     best_model = best_of_all_models[best_model_name][0]

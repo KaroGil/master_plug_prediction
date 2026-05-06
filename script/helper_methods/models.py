@@ -1,3 +1,7 @@
+"""
+Define models and hyperparameters for tuning making them into a returnable method. 
+"""
+
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.dummy import DummyClassifier
@@ -9,8 +13,9 @@ cfg = get_config()
 seed = cfg["experiment"]["random_state"]
 
 def get_models_and_params(y):
-    ''' Define models and hyperparameters for tuning '''
-    
+    """ Define models and hyperparameters for tuning """
+
+    # Check if only one class is present in the target variable, if so return a DummyClassifier as fallback
     if len(np.unique(y)) == 1: #Fallback
         print("⚠️  Only one class present.")
         return (
@@ -20,6 +25,7 @@ def get_models_and_params(y):
             }}
         )
     else:
+        # Return models to evaluate and their hyperparameters for tuning
         models = {
             "Dummy": DummyClassifier(strategy="most_frequent", random_state=seed),
             "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=seed),

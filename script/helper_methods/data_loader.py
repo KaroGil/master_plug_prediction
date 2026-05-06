@@ -1,10 +1,14 @@
+"""
+Helper methods to load raw data, standardize column names, parse time columns, and save datasets ready for labeling.
+"""
+
 import os
 import glob
 import joblib
 import pandas as pd
 
 def read_unify_data(path="../data/raw_data/data1/*.csv"):
-    '''Read a CSV file with unified separator and decimal'''
+    """Read a CSV file with unified separator and decimal"""
 
     with open(path, 'r') as file:
         heaeder_line = file.readline()
@@ -25,7 +29,7 @@ def read_unify_data(path="../data/raw_data/data1/*.csv"):
     
     return pd.read_csv(path, sep=sep, decimal=decimal)
 
-
+# Only useful for aligning mean columns when there are multiple files with different column names, but not needed for the current dataset.
 COLUMN_RENAME_MAP = {
     "Time": "Time",
     "Flow rate (Arith. Mean)": "Flow rate (Mean)",
@@ -37,15 +41,16 @@ COLUMN_RENAME_MAP = {
     "Tank temperature (Arith. Mean)": "Tank temperature (Mean)",
     "Bypass temperature (Arith. Mean)": "Bypass temperature (Mean)",
     "Differential pressure (Arith. Mean)": "Differential pressure (Mean)",
-}
-
+}#TODO
 
 def standardize_column_names(df):
+    """Standardize column names using a predefined mapping to ensure consistency across different files."""
     df = df.rename(columns=COLUMN_RENAME_MAP)
     return df
 
 
 def parse_time_column(time_column):
+    """Parse time column with various formats and return a datetime Series."""
     s = time_column.astype(str).str.strip()
 
     valid = s[s.notna() & (s != '')]
@@ -74,7 +79,7 @@ def parse_time_column(time_column):
 
 
 def load_raw_data(path="../data/raw_data/data1/*.csv", reconstruct_time=False, start_time=None, freq_Hz=2):
-    '''Load and concatenate CSV files from a given path'''
+    """Load and concatenate CSV files from a given path"""
 
     files = sorted(glob.glob(path))
     df_list = [read_unify_data(f) for f in files]
@@ -102,7 +107,7 @@ def load_raw_data(path="../data/raw_data/data1/*.csv", reconstruct_time=False, s
 
 
 def load_data(path="../data/raw_data/data1/*.csv"):
-    '''Load and concatenate CSV files from a given path'''
+    """Load and concatenate CSV files from a given path"""
 
     files = sorted(glob.glob(path))
     
@@ -118,7 +123,8 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
     df.reset_index(drop=True, inplace=True)
 
-    df = standardize_column_names(df)
+    # Use column mapping to standardize column names across different files, if needed
+    df = standardize_column_names(df) #Not useful for current datasets with 1Hz
 
     # Drop any columns that are unnamed
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
@@ -127,7 +133,8 @@ def load_data(path="../data/raw_data/data1/*.csv"):
 
 
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
-    '''Save datasets to CSV files'''
+    """Save datasets to CSV files"""
+
     os.makedirs(base_path, exist_ok=True)
     for key, df in data.items():
         df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
@@ -135,6 +142,8 @@ def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"
 
 
 def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
+    """Save dataset artifact to a joblib file, including training and test sets, feature names, and dataset name"""
+
     os.makedirs(base_path, exist_ok=True)
 
     artifact = {
@@ -153,6 +162,8 @@ def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
 
 
 def load_dataset_artifact(dataset_name: str, base_path: str) -> dict:
+    """Load dataset artifact from a joblib file and return the contained data."""
+
     path = os.path.join(base_path, f"{dataset_name}.joblib")
     artifact = joblib.load(path)
     return artifact
