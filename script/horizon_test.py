@@ -9,7 +9,7 @@ from script.predict_all import predict_all
 from script.helper_methods.config import get_config
 from script.helper_methods.data_modeling import model_data
 from script.helper_methods.data_preprocessing import preprocess_data
-from script.helper_methods.data_visualization import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
+from script.helper_methods.data_visualization.horizon_test import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
 
 
 # Load config

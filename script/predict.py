@@ -8,14 +8,13 @@ import numpy as np
 import pandas as pd
 from script.helper_methods.config import get_config
 from script.helper_methods.model_io import load_model
-from script.helper_methods.data_visualization import visualize_predicted_vs_true
 from script.preprocess_predict import preped_for_prediction_exists, preprocess_and_save
+from script.helper_methods.data_visualization.predictions import visualize_predicted_vs_true
 
-#TODO check this script
+
 # Load config
 cfg = get_config()
 target_col = cfg["data"]["target"]
-flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
 datasets = cfg["data"]["datasets"]
 
 BASE_PATH = "data/labeled/labeled_"
@@ -45,7 +44,7 @@ predictions = model.predict(X)
 # Visualize predictions as line plot comparing the predicted vs true values
 print("Visualizing predicted vs true values...")
 X[target_col] = y
-visualize_predicted_vs_true(X, predictions, model_name=type(model).__name__)
+visualize_predicted_vs_true(X, predictions)
 
 # Print unique predictions and their counts
 print("Unique predictions:")

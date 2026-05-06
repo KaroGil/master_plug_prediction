@@ -8,10 +8,10 @@ import joblib
 import pandas as pd
 from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
-from script.helper_methods.model_evaluation import false_alarm_analysis, per_dataset_statistics, print_class_distribution_across_datasets
-from script.helper_methods.data_visualization import f1_score_bar_plot_comparison, f1_score_line_plot_comparison
 from script.helper_methods.check_low_performers import analyse_low_performing_datasets
-from script.preprocess_predict import preped_for_prediction_exists, preprocess_and_save
+from script.preprocess_predict import load_preprocessed_data, preped_for_prediction_exists, preprocess_and_save
+from script.helper_methods.data_visualization.f1_score import f1_score_bar_plot_comparison, f1_score_line_plot_comparison
+from script.helper_methods.model_evaluation import false_alarm_analysis, per_dataset_statistics, print_class_distribution_across_datasets
 
 # Load config
 cfg = get_config()
@@ -25,24 +25,11 @@ BASE_PATH_PREPROCESSED_PREDICT = "data/processed_data/predict/"
 if preped_for_prediction_exists():
     # If preprocessed data already exists, load it instead of preprocessing again
     print("Preprocessed data already exists. Skipping preprocessing.")
-    dataset_ids = []
-    X_y_list = []
-    for i in datasets:
-        dataset_ids.append(i)
-        X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
-        y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-        X_y_list.append((X, y))
+    X_y_list, dataset_ids = load_preprocessed_data()
 else:
-    # If preprocessed data does not exist, preprocess and save it, then load it
+    # If preprocessed data does not exist, preprocess and save it
     print("Preprocessed data does not exist. Starting preprocessing.")
-    preprocess_and_save() #First preprocess and save the data, then load it
-    dataset_ids = []
-    X_y_list = []
-    for i in datasets:
-        dataset_ids.append(i)
-        X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
-        y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-        X_y_list.append((X, y))
+    X_y_list, dataset_ids = preprocess_and_save() #Preprocess and save the data
 
 # Load data
 print("💾 Loading multiple datasets for prediction...")
@@ -115,7 +102,6 @@ f1_score_line_plot_comparison(dataset_ids, {
     "Random Forest": f1scores_RF,
     "XGBoost": f1scores_XGBoost
 })
-
 
 # Per-dataset statistics
 per_dataset_statistics(
