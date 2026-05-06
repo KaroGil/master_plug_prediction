@@ -1,3 +1,8 @@
+"""
+Script to delete all files in the "models/" and "data/processed_data/" directories. 
+This is useful to clean up old models and processed data before running new experiments. 
+The script will skip any ".gitkeep" files to ensure that the directory structure is maintained.
+"""
 import os
 import shutil
 

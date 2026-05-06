@@ -1,6 +1,5 @@
 # Configuration file for pipeline parameters, dataset selection, and experiment settings.
 experiment:
-  name: predict_all # TODO: do i need thsi?
   random_state: 42 # For reproducibility of results
   n_iter: 5 # Number of iterations for hyperparameter tuning (e.g., RandomizedSearchCV)
   horizon: 25 # 25 for 1.0s frequency - 1Hz

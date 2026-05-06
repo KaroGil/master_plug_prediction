@@ -15,8 +15,9 @@ import joblib
 import pandas as pd
 from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
-from script.preprocess_predict import preped_for_prediction_exists, preprocess_and_save
-from script.helper_methods.data_visualization import f1_score_bar_plot, plot_all_predictions, plot_test_data_summary, plot_false_alarm_rates
+from script.preprocess_predict import load_preprocessed_data, preped_for_prediction_exists, preprocess_and_save
+from script.helper_methods.data_visualization.f1_score import f1_score_bar_plot
+from script.helper_methods.data_visualization.predictions import plot_all_predictions, plot_test_data_summary, plot_false_alarm_rates
 
 # Load config
 cfg = get_config()
@@ -30,25 +31,13 @@ BASE_PATH_PREPROCESSED_PREDICT = "data/processed_data/predict/"
 
 def predict_all(runId, horizon=HORIZON):
     if preped_for_prediction_exists() and horizon == HORIZON:
-        # If preprocessed data for prediction already exists and we are using the default horizon, skip preprocessing and load the data
+        # If preprocessed data already exists, load it instead of preprocessing again
         print("Preprocessed data already exists. Skipping preprocessing.")
-        dataset_ids = []
-        X_y_list = []
-        for i in datasets:
-            dataset_ids.append(i)
-            X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
-            y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-            X_y_list.append((X, y))
+        X_y_list, dataset_ids = load_preprocessed_data()
     else:
+        # If preprocessed data does not exist, preprocess and save it
         print("Preprocessed data does not exist. Starting preprocessing.")
-        preprocess_and_save(horizon=horizon) #First preprocess and save the data, then load it
-        dataset_ids = []
-        X_y_list = []
-        for i in datasets:
-            dataset_ids.append(i)
-            X = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_X.csv")
-            y = pd.read_csv(f"{BASE_PATH_PREPROCESSED_PREDICT}data_{i}_y.csv").squeeze()
-            X_y_list.append((X, y))
+        X_y_list, dataset_ids = preprocess_and_save() #Preprocess and save the data
     
     # Load model
     print("🔮 Loading model and making predictions...")

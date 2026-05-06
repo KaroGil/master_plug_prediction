@@ -9,7 +9,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import f1_score, fbeta_score, make_scorer
 
-from . import data_visualization as dv
+from .data_visualization import feature_importance as dv
 from .model_io import save_model, save_scores
 from .models import get_models_and_params
 from .model_evaluation import evaluate_model_on_test, evaluate_all_models
@@ -171,6 +171,13 @@ def model_data(X_train, y_train, X_test, y_test, horizon=HORIZON):
     # Generate SHAP summary plot for the best model
     dv.plot_shap_summary(best_model, X_train.drop(columns=['LogId']), save_path=f"plots/shap_summary_{horizon}.png")
     
+    # Uses dataset25 to evaluate the best model on the test set and print the F1 score
+    test_mask = X_test["LogId"] == 25
+
+    # Apply mask to both using the same mask
+    X_test = X_test.loc[test_mask].copy()
+    y_test = y_test.loc[test_mask].copy()
+
     X_test.drop(columns=['LogId'], inplace=True) # drop LogId for evaluation
 
     # Evaluate the best model on the test set and print the F1 score.

@@ -1,9 +1,15 @@
+"""
+Script used when testing data window sizes. 
+Comparing window sizes of 2, 10 and 30 samples (2s, 10s and 30s at 1Hz) to see how it affects model performance.
+The script runs the full modeling pipeline for each window size, evaluates on the validation and test sets
+and visualizes the results.
+"""
 import numpy as np
 import pandas as pd
 from script.helper_methods.config import get_config
 from script.helper_methods.data_modeling import model_data
 from script.helper_methods.data_preprocessing import preprocess_data
-from script.helper_methods.data_visualization import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
+from script.helper_methods.data_visualization.horizon_test import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
 
 cfg = get_config()
 dataset_nr = cfg['data']['datasets']

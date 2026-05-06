@@ -58,6 +58,24 @@ def preprocess_and_save(datasets=datasets, horizon=HORIZON):
         df["target"] = y
         save_data({"X": X, "y": y}, dataset_name=f"data_{dataset_id}", base_path="./data/processed_data/predict/")
 
+    return X_y_list, dataset_ids
+
+def load_preprocessed_data(datasets=datasets, base_path=BASE_PATH_PREPROCESSED_PREDICT):
+    """
+    Loads the preprocessed data for prediction from the specified path.
+    Returns:
+    list: A list of tuples containing the preprocessed features (X) and target (y) for each dataset.
+    """
+    dataset_ids = []
+    X_y_list = []
+    for i in datasets:
+        dataset_ids.append(i)
+        X = pd.read_csv(f"{base_path}data_{i}_X.csv")
+        y = pd.read_csv(f"{base_path}data_{i}_y.csv").squeeze()
+        X_y_list.append((X, y))
+    return X_y_list, dataset_ids
+
+
 if __name__ == "__main__":
     if preped_for_prediction_exists():
         print("Preprocessed data already exists. Skipping preprocessing.")
