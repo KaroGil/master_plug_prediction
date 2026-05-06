@@ -31,7 +31,7 @@ else:
     print("Preprocessed data does not exist. Starting preprocessing.")
     X_y_list, dataset_ids = preprocess_and_save() #Preprocess and save the data
 
-# Load data
+# Load labeled unprocessed data
 print("💾 Loading multiple datasets for prediction...")
 data_list = []
 dataset_ids = []

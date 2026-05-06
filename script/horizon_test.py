@@ -16,7 +16,7 @@ from script.helper_methods.data_visualization.horizon_test import plot_test_f1_v
 cfg = get_config()
 dataset_nr = cfg['data']['datasets']
 LABLED_PATH = cfg['data']['LABELED_PATH']
-frequency = cfg["data"]["frequency"]
+freq = cfg["data"]["frequency"]
 
 datasets = []
 
@@ -24,7 +24,6 @@ datasets = []
 for i in dataset_nr:
     datasets.append(pd.read_csv(LABLED_PATH + f"data{i}.csv"))
 
-freq = frequency # Hz
 horizons = [1, 5, 10, 15, 25, 50, 100, 500]  # seconds
 horizons = [h * freq for h in horizons]  # convert to number of samples
 print(f"Testing with horizons (in samples): {horizons}")

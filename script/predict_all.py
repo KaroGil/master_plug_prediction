@@ -12,7 +12,6 @@ The script performs the following steps:
 """
 
 import joblib
-import pandas as pd
 from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
 from script.preprocess_predict import load_preprocessed_data, preped_for_prediction_exists, preprocess_and_save

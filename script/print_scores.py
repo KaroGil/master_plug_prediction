@@ -1,3 +1,6 @@
+"""
+Script to print validation scores saved in summary.csv
+"""
 import os
 import pandas as pd
 PATH = os.path.join("models", "model_comparison_summary.csv")
