@@ -69,66 +69,6 @@ def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_c
 
     return df
 
-#COMBINED FEATURES CONTAINING OTHER FEATURES THAN ONLY PRESSURE (only used when other features are included in training)
-def normlized_pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
-    """
-    Calculate normalized pressure drop across the pump as a feature.
-    Normalized ΔP = (P_outlet - P_inlet) / P_inlet
-    """
-    df["TS_in_changed_out"] = 0 # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
-
-    if inlet_col not in df.columns:
-        inlet_col = "Pump outlet pressure (Mean)"
-        df["TS_in_changed_out"] = 1
-
-        
-    df["Normalized_Pressure_Drop"] = (df[outlet_col] - df[inlet_col]) / (df[flow_col] + 1e-6)  
-
-    return df
-
-
-
-## Flow-pressure interaction feature
-def flow_path_openess_feature(df, flow_col="Flow rate (Mean)", ts_pressure_col="Pressure_Drop"):
-    """
-    Calculate flow path openness as a feature.
-    Openness = Q / ΔP
-    Higher values indicate more open flow paths, while lower values suggest constriction.
-    """
-    df["Flow_Path_Openness"] = df[flow_col] / (df[ts_pressure_col] + 1e-6)  
-
-    return df
-
-def flow_pressure_response_feature(df, flow_col="Flow rate (Mean)", pump_col="Pump outlet pressure (Mean)"): #TODO
-    """
-    Calculates the flow-pressure response feature, which captures how changes in flow rate affect pressure.
-    Response = dP/dQ (change in pressure per unit change in flow)
-    """
-    df["Flow_Pressure_Response"] = (df[flow_col].diff() / (df[pump_col].diff() + 1e-6)).fillna(0)
-    return df
-
-
-### Temperature-based derived features
-def ts_temperature_rise(df, inlet_temp_col="Temperature TS inlet (Mean)", outlet_temp_col="Temperature TS outlet (Mean)"):
-    """
-    Calculate temperature rise across the system as a feature.
-    ΔT = T_outlet - T_inlet
-    """
-
-    df["Temperature_Rise"] = df[outlet_temp_col] - df[inlet_temp_col]
-
-    return df
-
-
-def ts_bypass_difference(df, inlet_temp_col="Temperature TS inlet (Mean)", bypass_temp_col="Bypass temperature (Mean)"):
-    """
-    Calculate temperature difference between TS inlet and bypass as a feature.
-    ΔT_bypass = T_inlet - T_bypass
-    """
-    df["TS_Bypass_Temp_Diff"] = df[inlet_temp_col] - df[bypass_temp_col]
-
-    return df
-
 
 def feature_engineering_pipeline(df):
     """
@@ -140,49 +80,37 @@ def feature_engineering_pipeline(df):
     df = pressure_drop_feature(df)
     df = pump_pressure_fraction_feature(df)
 
-    if "Flow rate (Mean)" in df.columns and "Flow rate (Mean)" not in non_feature_columns:
-        df = normlized_pressure_drop_feature(df)
-        df = flow_path_openess_feature(df)
-        df = flow_pressure_response_feature(df)
-    
-    if "Temperature TS inlet (Mean)" in df.columns and "Temperature TS outlet (Mean)" in df.columns and "Temperature TS outlet (Mean)" not in non_feature_columns and "Temperature TS inlet (Mean)" not in non_feature_columns:
-        df = ts_temperature_rise(df)
-        df = ts_bypass_difference(df)
-
     return df
 
-#TODO: remove flow rate from this file, as it was dropped and only pressure-related features were used. 
-def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)", flow_col="Flow rate (Mean)"):
+def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)"):
     """
-    Function to calculate Plug Index based on pressure drop and flow rate.
+    Function to calculate Plug Index based on pressure drop.
     Plug index indicates likelihood of plug formation.
     """
 
+    #TODO: remove
+    # Add flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
     df["TS_in_changed_out"] = 0
 
     if p_up_col not in df.columns:
         p_up_col = "Pump outlet pressure (Mean)"
         df["TS_in_changed_out"] = 1
 
-    df = df.copy()
 
+    df = df.copy()
+    # Check window size
     w = int(window_size / 0.05)
     if w < 2:
         raise ValueError("Window size too small for plug index calculation.")
     
+    # Calculate pressure drop and its slope
     df["dP"] = df[p_up_col] - df[p_down_col]
-
     df["dP_slope"] = df["dP"].rolling(window=w, min_periods=w).apply(lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True).fillna(0)
-
+    # Standardize dP and dP_slope
     df["dP_z"] = (df["dP"] - df["dP"].mean()) / (df["dP"].std() + 1e-6)
     df["dP_slope_z"] = (df["dP_slope"] - df["dP_slope"].mean()) / (df["dP_slope"].std() + 1e-6)
     
-    if flow_col in df.columns and flow_col not in non_feature_columns: #If flow rate is included in training, also include it in the plug index calculation
-        df["flow_z"] = (df[flow_col] - df[flow_col].mean()) / (df[flow_col].std() + 1e-6)
-
-        df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] - df["flow_z"]
-
-    else:
-        df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] 
+    # Combine standardized pressure drop and slope to create plug index
+    df["Plug_Index"] = df["dP_z"] + df["dP_slope_z"] 
 
     return df

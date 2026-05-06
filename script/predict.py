@@ -15,7 +15,6 @@ from script.preprocess_predict import preped_for_prediction_exists, preprocess_a
 # Load config
 cfg = get_config()
 target_col = cfg["data"]["target"]
-flow_rate_missing_sets = cfg["data"]["flow_rate_missing"]
 datasets = cfg["data"]["datasets"]
 
 BASE_PATH = "data/labeled/labeled_"
