@@ -11,6 +11,11 @@ Usage:
 import glob
 import argparse
 import pandas as pd
+from script.helper_methods.config import get_config
+
+# Load config
+cfg = get_config()
+DATASETS = cfg['data']['datasets']
 
 def read_unify_data(f):
     return pd.read_csv(f)
@@ -46,12 +51,15 @@ def load_data(path="data/raw_data/data1/*.csv", reconstruct_time=False, start_ti
     return df
 
 
-def load_all_datasets_and_print_columns(base_path="data/raw_data", num_datasets=25):
+def load_all_datasets_and_print_columns(base_path="data/raw_data", datasets=None):
     """Load all datasets and print column names for each."""
     
     all_columns = {}
     
-    for i in range(1, num_datasets + 1):
+    if datasets is None:
+        datasets = range(1, 26)
+
+    for i in datasets:
         path = f"{base_path}/data{i}/*.csv"
         print(f"\n--- Dataset {i} ---")
         try:
@@ -97,5 +105,5 @@ if __name__ == "__main__":
     print(f"Datasets  : 1 – {args.num_datasets}")
     load_all_datasets_and_print_columns(
         base_path=args.base_path,
-        num_datasets=args.num_datasets,
+        datasets=DATASETS,
     )

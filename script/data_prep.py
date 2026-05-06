@@ -1,3 +1,9 @@
+"""
+Script to prepare the data for training and testing the models. 
+It loads the datasets, preprocesses them, and splits them into training and testing sets. 
+The preprocessed data is then saved and ready to be used for model training and evaluation.
+Saved preprocessed data can be found in "data/preprocessed/".
+"""
 import pandas as pd
 from script.helper_methods.config import get_config
 from script.helper_methods.data_preprocessing import preprocess_data
