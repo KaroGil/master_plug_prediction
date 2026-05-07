@@ -1,3 +1,9 @@
+"""
+Script to run predictions on raw data files using the best trained model. 
+The script loads the raw data, preprocesses it, makes predictions, and saves the results to a CSV file. 
+It also visualizes the predicted values for analysis.
+"""
+
 import joblib
 import argparse
 import pandas as pd
@@ -5,7 +11,6 @@ from pathlib import Path
 from script.helper_methods.data_loader import load_raw_data
 from script.helper_methods.data_preprocessing import preprocess_data_predict
 from script.helper_methods.data_visualization.predictions import visualize_predicted_vs_true
-
 
 
 def parse_args():

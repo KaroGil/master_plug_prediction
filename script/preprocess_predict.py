@@ -4,8 +4,8 @@ Can be run alone or is run as part of predict_all.py.
 This is run before predict_all.py to ensure the data is preprocessed and ready for prediction. 
 The preprocessed data is saved in data/processed_data/predict/ and can be loaded by predict_all.py for faster testing.
 """
-import os
 
+import os
 import pandas as pd
 from script.helper_methods.config import get_config
 from script.helper_methods.data_preprocessing import preprocess_data_predict

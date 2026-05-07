@@ -222,7 +222,6 @@ def plot_test_data_summary(X_y_list, y_preds, dataset_ids, runId):
     plt.close()
 
 ## False alarm
-# Used in predict_all.py
 def plot_false_alarm_rates(dataset_ids, X_y_list, y_preds, runId, threshold=0.05):
     """
     Calculates and plots the false alarm rate for datasets with no plug events.

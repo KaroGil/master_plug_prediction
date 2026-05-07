@@ -1,5 +1,5 @@
 """
-Helper methods to load raw data, parse time columns, and save datasets.
+Helper methods to load raw and labeled data, parse time columns, and save datasets.
 """
 
 import os
@@ -146,7 +146,14 @@ def load_labeled_dataset(dataset_name, LABLED_PATH=LABLED_PATH):
 
     return df
 
+
 def load_labeled_datasets(dataset_nr=dataset_nr, LABLED_PATH=LABLED_PATH):
+    """
+    Load multiple labeled datasets
+    - `dataset_nr`: list of dataset numbers to load (e.g. [1, 2, 3])
+    - `LABLED_PATH`: base path to the labeled datasets
+    """
+
     datasets = []
 
     # Add data to include in training based on dataset numbers in config
@@ -157,6 +164,7 @@ def load_labeled_datasets(dataset_nr=dataset_nr, LABLED_PATH=LABLED_PATH):
     
     return datasets
 
+
 def keep_relevant_columns(df, dataset_name=None):
     """
     Keep only pressure-related columns and essential metadata columns.
@@ -165,6 +173,7 @@ def keep_relevant_columns(df, dataset_name=None):
     - `df`: input dataframe
     - `dataset_name`: optional name for logging
     """
+    
     keep_mask = (
         df.columns.str.contains("press", case=False, na=False)
         | df.columns.isin(["Plug", "LogId", "Plug_future", "Time"])
@@ -178,7 +187,7 @@ def keep_relevant_columns(df, dataset_name=None):
 
 
 def add_logId_column(df, log_id):
-    '''Add a LogId column to the dataframe to specify which log the data comes from'''
+    """Add a LogId column to the dataframe to specify which log the data comes from"""
     df = df.copy()
     df['LogId'] = int(log_id)
     return df

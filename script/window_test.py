@@ -17,25 +17,31 @@ LABLED_PATH = cfg['data']['LABELED_PATH']
 frequency = cfg["data"]["frequency"]
 horizon = cfg["experiment"]["horizon"]
 
+# Load datasets
 datasets = []
 for i in dataset_nr:
     datasets.append(pd.read_csv(LABLED_PATH + f"data{i}.csv"))
 
+# Establish window sizes to test
 window_sizes = [2, 10, 30]
 scores = {}
 
+# Run modeling pipeline for each window size and evaluate on validation and test sets
 for window_size in window_sizes:
     print(f"\n\n=== WINDOW SIZE: {window_size} samples ({window_size}s at 1Hz) ===")
     
+    # Preprocess data with the current window size
     X_train, X_test, y_train, y_test = preprocess_data(
         datasets, 
         [f"data{i}" for i in dataset_nr], 
         horizon=horizon,
         window_size=window_size
     )
-
+    
+    # Train models and evaluate on validation and test sets
     _, test_f1_score = model_data(X_train, y_train, X_test, y_test, horizon=horizon)
 
+    # Store scores for comparison
     summary = pd.read_csv("models/model_comparison_summary.csv")
     scores[window_size] = (
         summary["Best Validation F1 Score"].iloc[1],  # RF

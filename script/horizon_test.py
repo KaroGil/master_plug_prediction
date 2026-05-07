@@ -24,22 +24,30 @@ datasets = []
 for i in dataset_nr:
     datasets.append(pd.read_csv(LABLED_PATH + f"data{i}.csv"))
 
+# Define horizons to test (in seconds) and convert to number of samples based on data frequency
 horizons = [1, 5, 10, 15, 25, 50, 100, 500]  # seconds
 horizons = [h * freq for h in horizons]  # convert to number of samples
 print(f"Testing with horizons (in samples): {horizons}")
 
 scores = {}
 
+# Run the modeling pipeline for each horizon and store the scores
 for horizon in horizons:
     print(f"\n\n=== HORIZON: {horizon} samples ===")
+
+    # Preprocess data for the current horizon
     X_train, X_test, y_train, y_test = preprocess_data(datasets, [f"data{i}" for i in dataset_nr], horizon=horizon)
 
+    # Train models and evaluate on validation and test sets
     _, test_f1_score = model_data(X_train, y_train, X_test, y_test, horizon=horizon) 
 
+    # Get scores
     summary = pd.read_csv("models/model_comparison_summary.csv")
     scores[horizon] = (summary["Best Validation F1 Score"].iloc[1],summary["Best Validation F1 Score"].iloc[2], test_f1_score)
 
+    # Predict on all data for the current horizon and save results
     predict_all(runId=f"{horizon}_samples", horizon=horizon)
+
     print(f"\n\n=== SUMMARY OF SCORES FOR HORIZON {horizon} SAMPLES ===")
     if scores[horizon][0] > scores[horizon][1]:
         print("Model chosen RF")
@@ -71,8 +79,10 @@ best_model_name = "RF" if scores[best_horizon][0] > scores[best_horizon][1] else
 print(f"\nBest horizon based on validation F1 score: {best_horizon} samples with score {best_val_scores[best_horizon_idx]}")
 print(f"Best model for this horizon: {best_model_name} with validation F1 score {best_val_scores[best_horizon_idx]} and test F1 score {test_scores[best_horizon_idx]}")
 
+# Visualize test F1 scores vs horizon
 plot_test_f1_vs_horizon(horizons, test_scores, test_or_val="Test")
 plot_test_f1_vs_horizon_bar(horizons, test_scores, test_or_val="Test")
 
+# Visualize validation F1 scores vs horizon
 plot_test_f1_vs_horizon(horizons, best_val_scores, test_or_val="Validation")
 plot_test_f1_vs_horizon_bar(horizons, best_val_scores, test_or_val="Validation")
