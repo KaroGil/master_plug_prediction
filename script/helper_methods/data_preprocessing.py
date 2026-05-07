@@ -83,7 +83,7 @@ def align_features(df, FEATURES):
     return df[FEATURES]
 
 
-def feature_engineering_windowing(df, dataset_name="data1", window_size=2):
+def feature_engineering_windowing(df, dataset_name="data1", window_size=2, labels=True):
     '''Adding feature engineering steps and windowing to the data'''
 
     # Make sure LogId is present for windowing, if not create it based on dataset name
@@ -105,7 +105,7 @@ def feature_engineering_windowing(df, dataset_name="data1", window_size=2):
     df_feat = df.select_dtypes(include=['number']).copy()
 
     # Apply windowing to create sequences of features and corresponding target values
-    X, y = w.prep_window(df, [x for x in df_feat.columns.tolist() if x not in  non_feature_columns], window_size=window_size)
+    X, y = w.prep_window(df, [x for x in df_feat.columns.tolist() if x not in  non_feature_columns], window_size=window_size, labels=labels)
 
     return X, y
 
@@ -157,7 +157,7 @@ def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", wi
     return X_train, X_test, y_train, y_test
 
 
-def preprocess_data_predict(df, dataset_name, horizon=HORIZON, window_size=30):
+def preprocess_data_predict(df, dataset_name, horizon=HORIZON, window_size=30, add_label=True):
     '''Full preprocessing pipeline for prediction'''
 
     # Load the latest preprocessed dataset artifact to get the feature names used for training
@@ -168,10 +168,11 @@ def preprocess_data_predict(df, dataset_name, horizon=HORIZON, window_size=30):
 
     FEATURES = artifact["feature_names"]
 
-    create_future_target(df, horizon=horizon) # Create futur target
+    if add_label:
+        create_future_target(df, horizon=horizon) # Create future target
 
     # Feature engineering and windowing
-    X, y = feature_engineering_windowing(df, dataset_name, window_size=window_size)
+    X, y = feature_engineering_windowing(df, dataset_name, window_size=window_size, labels=add_label)
 
     # Align features of the prediction dataset with the features used for training
     X = align_features(X, FEATURES)

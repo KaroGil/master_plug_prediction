@@ -17,7 +17,7 @@ target_col = cfg["data"]["target"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
 frequency = cfg["data"]["frequency"]
 
-def make_windowed_Xy_stats(df, feature_cols, label_col, window):
+def make_windowed_Xy_stats(df, feature_cols, label_col, window, labels=True):
     """
     Create windowed features using statistical summaries.
     - df: The input dataframe containing the raw data.
@@ -51,7 +51,8 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
 
         # Append the row of features, the corresponding label, and the LogId for the current index
         X_rows.append(row)
-        y.append(df.iloc[i][label_col])
+        if labels:
+            y.append(df.iloc[i][label_col])
         log_ids.append(df.iloc[i]['LogId'])
 
     # Put everything together
@@ -64,11 +65,11 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window):
     print(f"Total signals: {len(feature_cols)}")
     X = pd.DataFrame(X, columns=[f"{col}_{stat}" for col in feature_cols for stat in ["mean", "std", "min", "max", "slope"]])
     X['LogId'] = pd.Series(log_ids)
-
+    
     return X, pd.Series(y)
 
 
-def prep_window(df, features, window_size=2):
+def prep_window(df, features, window_size=2, labels=True):
     print(f"Preparing windowed features with frequency {frequency} Hz...")
     # Values for windowing
     FS = frequency # Hz
@@ -83,7 +84,8 @@ def prep_window(df, features, window_size=2):
     df=df,
     feature_cols=features,
     label_col=target_col,
-    window=W
+    window=W,
+    labels=labels
     )
 
     print(f"X shape: {X.shape}")
