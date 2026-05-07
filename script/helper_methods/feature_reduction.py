@@ -22,6 +22,26 @@ MODELS_DIR = os.path.abspath(MODELS_DIR)
 shap_path = os.path.join(MODELS_DIR, 'shap_selected_mask.pkl')
 shap_path = os.path.abspath(shap_path)
 
+def compute_shap_values(model, X, shap_subset_size=100):
+    """Compute SHAP values for the given model and data."""
+
+    shap_idx = np.arange(max(0, len(X) - shap_subset_size), len(X))
+    X_shap = X.iloc[shap_idx].reset_index(drop=True)
+    print(f"Calculating SHAP values on subset of size: {X_shap.shape}")
+
+    explainer = shap.TreeExplainer(model)
+    raw_shap = explainer.shap_values(X_shap, check_additivity=False)
+
+    if isinstance(raw_shap, list):
+        shap_values = raw_shap[1]
+    else:
+        if raw_shap.ndim == 3:
+            shap_values = raw_shap[..., 1]
+        else:
+            shap_values = raw_shap
+
+    return shap_values, X_shap
+
  
 def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     ''' 
@@ -33,23 +53,8 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
     baseline.fit(X_train, y_train)
     print("🛠️ SHAP baseline model trained.")
     
-    # Use a subset of the training data for SHAP value calculation to speed up the process
-    shap_idx = np.arange(max(0, len(X_train) - shap_subset_size), len(X_train))
-    X_shap = X_train.iloc[shap_idx]
-    print("Calculating SHAP values on subset of size:", X_shap.shape)
-
-    explainer = shap.TreeExplainer(baseline) 
-
-    raw_shap = explainer.shap_values(X_shap, check_additivity=False)
-
-    # Handle both binary and multi-class cases, check to ensure correct class's SHAP values
-    if isinstance(raw_shap, list):
-        shap_values = raw_shap[1]
-    else:
-        if raw_shap.ndim == 3:
-            shap_values = raw_shap[..., 1] 
-        else:
-            shap_values = raw_shap
+    # Compute SHAP values
+    shap_values, _ = compute_shap_values(baseline, X_train, shap_subset_size=shap_subset_size)
 
     importance = np.mean(np.abs(shap_values), axis=0)  
     

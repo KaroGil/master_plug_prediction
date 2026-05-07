@@ -126,6 +126,9 @@ def delete_preprocessed_predict_files(preprocessed_predict_path="./data/processe
 def load_labeled_dataset(dataset_name, LABLED_PATH=LABLED_PATH):
     """Load a single labeled dataset and validate it"""
 
+    # First delete any preprocessed predict files to avoid confusion
+    delete_preprocessed_predict_files()
+
     df = pd.read_csv(LABLED_PATH + f"data{dataset_name}.csv")
 
     # Validate dataset and get any extra columns that are not required
