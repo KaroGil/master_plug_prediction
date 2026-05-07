@@ -22,7 +22,7 @@ def run_predictions(
     # Load
     df = load_raw_data(data_path)
 
-    log_id = df["LogId"]
+    log_id = df["LogId"][0]
 
     # Preprocess (no labels)
     X,_ = preprocess_data_predict(df, dataset_name="Loaded Data", add_label=False)
@@ -37,7 +37,7 @@ def run_predictions(
     })
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(f"{output_path}_{log_id}.csv", index=False)
-    print(f"Predictions saved to {output_path}")
+    print(f"Predictions saved to {output_path}_{log_id}.csv")
 
 
     visualize_predicted_vs_true(X, predictions, plotLabel=False)
