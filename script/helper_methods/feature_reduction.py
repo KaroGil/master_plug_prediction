@@ -25,13 +25,16 @@ shap_path = os.path.abspath(shap_path)
 def compute_shap_values(model, X, shap_subset_size=100):
     """Compute SHAP values for the given model and data."""
 
+    # Use only a subset of data for SHAP calculation to speed up the process
     shap_idx = np.arange(max(0, len(X) - shap_subset_size), len(X))
     X_shap = X.iloc[shap_idx].reset_index(drop=True)
     print(f"Calculating SHAP values on subset of size: {X_shap.shape}")
 
+    # Create explainer and compute SHAP values
     explainer = shap.TreeExplainer(model)
     raw_shap = explainer.shap_values(X_shap, check_additivity=False)
 
+    # Handle different output formats of SHAP values (list for multi-class, array for binary)
     if isinstance(raw_shap, list):
         shap_values = raw_shap[1]
     else:
@@ -44,10 +47,11 @@ def compute_shap_values(model, X, shap_subset_size=100):
 
  
 def shap_feature_importance(X_train, y_train, shap_subset_size=100):
-    ''' 
+    """ 
     Calculate SHAP feature importance for the given model and training data, and
     remove features with low importance. 
-    '''    
+    """
+
     # Train a baseline model for SHAP value calculation
     baseline = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1)
     baseline.fit(X_train, y_train)
@@ -89,12 +93,12 @@ def shap_feature_importance(X_train, y_train, shap_subset_size=100):
 
 
 def remove_shap_low_importance_features(X, selected):
-    '''Remove low importance features based on SHAP selection mask'''
+    """Remove low importance features based on SHAP selection mask"""
     return X.loc[:, selected]
 
 
 def remove_correlated_features(X, threshold=0.9):
-    '''Remove highly correlated features based on a correlation threshold'''
+    """Remove highly correlated features based on a correlation threshold"""
 
     corr_matrix = X.corr().abs() # Calculate absolute correlation matrix
 

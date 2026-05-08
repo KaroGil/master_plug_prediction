@@ -4,6 +4,7 @@ including functions to create derived features.
 Also includes a function to calculate a plug index based on pressure drop and flow rate, 
 which can be used as an additional feature for plug prediction models.
 """
+
 import numpy as np
 import pandas as pd
 from script.helper_methods.config import get_config
@@ -15,10 +16,8 @@ non_feature_columns = cfg["data"]["non_feature_columns"]
 
 # Derivatives (d/dt) + (d2/dt2)
 def add_time_derivative_features(df, time_col="Time"):
-    """
-    Add first and second time derivative features for all numeric columns in the DataFrame.
-    Assumes 'time_col' is in datetime format (e.g., '1900-01-01 11:07:40.450') and sorted.
-    """
+    """ Add first and second time derivative features for all numeric columns in the DataFrame """
+
     # Ensure time column is in datetime format and calculate time differences in seconds
     df[time_col] = pd.to_datetime(df[time_col])
     time_diffs = df[time_col].diff().dt.total_seconds().fillna(1)  

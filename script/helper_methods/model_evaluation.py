@@ -9,9 +9,11 @@ Includes:
 - per-dataset F1 summary statistics
 - false-alarm / missed-detection timeline analysis
 """
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from .config import get_config
 from sklearn.metrics import (
     confusion_matrix, ConfusionMatrixDisplay,
     classification_report,
@@ -19,7 +21,6 @@ from sklearn.metrics import (
     precision_recall_curve, average_precision_score,
     f1_score, precision_score, recall_score, roc_auc_score
 )
-from .config import get_config
 
 # Load config
 cfg = get_config()
@@ -37,6 +38,7 @@ def evaluate_model_on_test(model, X_test, y_test):
     print(classification_report(y_test, y_test_pred, digits=3, zero_division=0))
     f1_score_value = f1_score(y_test, y_test_pred, average='weighted')
     print("F1 Score:", f1_score_value)
+
     return y_test_pred, f1_score_value
 
 
@@ -84,7 +86,10 @@ def print_metrics(metrics: dict):
               f"{metrics[f'recall_{cls}']:>10} {metrics[f'f1_{cls}']:>10}")
     print(f"{'─'*45}\n")
 
+
 def print_class_distribution_across_datasets(dataset_ids, X_y_list):
+    """Prints the class distribution for each dataset."""
+
     print("\n⚖️  Class distribution in datasets:")
     print(f"{'Dataset':<12} {'Samples':>10} {'Plug (1)':>12} {'No Plug (0)':>14}")
     print("-" * 55)
@@ -95,6 +100,7 @@ def print_class_distribution_across_datasets(dataset_ids, X_y_list):
         n_no_plug  = (y == 0).sum()
         plug_ratio = n_plug / n_samples
         print(f"{ds_id:<12} {n_samples:>10} {n_plug:>7} ({plug_ratio*100:.1f}%) {n_no_plug:>7} ({(1-plug_ratio)*100:.1f}%)")
+
 
 def evaluate_all_models(best_of_all_models, X_test, y_test, horizon, save_dir="figures"):
     """
@@ -144,6 +150,7 @@ def plot_confusion_matrix(y_true, y_pred, model_name="Dummy Classifier",
     Plots a confusion matrix.
     normalize=True shows recall per class 
     """
+
     standalone = ax is None
     if standalone: # Create a new figure if no axis is provided (standalone mode)
         _, ax = plt.subplots(figsize=(5, 4))
@@ -168,8 +175,8 @@ def plot_roc_curve(y_true, y_prob, model_name="Dummy Classifier",
                    ax=None, save_path=None):
     """
     Plots ROC curve for one model.
-    y_prob: predicted probabilities for class 1
     """
+
     standalone = ax is None
     if standalone: # Create a new figure if no axis is provided (standalone mode)
         _, ax = plt.subplots(figsize=(5, 4))
@@ -202,9 +209,8 @@ def plot_pr_curve(y_true, y_prob, model_name="Dummy Classifier",
                   ax=None, save_path=None):
     """
     Plots Precision-Recall curve for one model
-    y_prob: predicted probabilities for class 1
-    The dashed baseline = minority class freq
     """
+
     standalone = ax is None
     if standalone: # Create a new figure if no axis is provided (standalone mode)
         _, ax = plt.subplots(figsize=(5, 4))
@@ -241,6 +247,7 @@ def plot_dashboard(y_true, y_pred, y_prob=None, model_name="Dummy Classifier",
     One-call function: prints metrics + plots confusion matrix, ROC, and PR
     in a single figure. y_prob is optional but strongly recommended.
     """
+
     # Compute and print all metrics
     metrics = get_metrics(y_true, y_pred, y_prob, model_name)
     print_metrics(metrics)
@@ -271,6 +278,7 @@ def per_dataset_statistics(f1_scores_dict):
     """
     Prints mean, std, min, max F1 across datasets.
     """
+
     print(f"\n{'─'*55}")
     print("  Per-dataset F1 statistics")
     print(f"{'─'*55}")
@@ -294,6 +302,7 @@ def false_alarm_analysis(y_true, y_pred, dataset_id,
     occur over time in a single dataset.
     sample_rate_hz: sampling frequency of your sensor (2Hz = 0.5s per sample)
     """
+    
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     time_axis = np.arange(len(y_true)) / sample_rate_hz  # seconds

@@ -24,6 +24,7 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window, labels=True):
     - feature_cols: List of columns to be used as features.
     - label_col: The column to be used as the target variable.
     - window: The size of the window in number of samples (determined by frequency and window duration).
+    - labels: Whether to include the target variable in the output (default is True).
     Returns:
     - X: A dataframe containing the windowed features.
     - y: A series containing the corresponding target values.
@@ -70,6 +71,16 @@ def make_windowed_Xy_stats(df, feature_cols, label_col, window, labels=True):
 
 
 def prep_window(df, features, window_size=2, labels=True):
+    """ Prepare windowed features from the raw dataframe.
+    - df: The input dataframe containing the raw data.
+    - features: List of columns to be used as features.
+    - window_size: The size of the window in seconds (default is 2 seconds).
+    - labels: Whether to include the target variable in the output (default is True).
+    Returns:
+    - X: A dataframe containing the windowed features.
+    - y: A series containing the corresponding target values.
+    """
+
     print(f"Preparing windowed features with frequency {frequency} Hz...")
     # Values for windowing
     FS = frequency # Hz

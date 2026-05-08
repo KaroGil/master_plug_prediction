@@ -1,6 +1,5 @@
 """
 This module contains all functions related to data preprocessing, including:
-- Creating the target column based on defined thresholds
 - Creating the future target column by shifting the current target
 - Splitting the data into train and test sets without shuffling
 - Printing the class distribution of the target variable
@@ -40,18 +39,21 @@ FEATURES_PATH = os.path.abspath(FEATURES_PATH)
 
 
 def create_future_target(df, horizon=HORIZON):
-    '''Create target column 'Plug_future' by shifting 'Plug' column'''
+    """Create target column 'Plug_future' by shifting 'Plug' column"""
 
     df[target_col] = (df['Plug'].shift(-1).rolling(window=horizon, min_periods=1).max())
-    df.dropna(subset=[target_col], inplace=True)
+    df.dropna(subset=[target_col], inplace=True) # Drop rows where target is NaN (last 'horizon' rows)
 
 
-def split_data(X,y):
-    '''Split data into train, validation, and test sets without shuffling'''
+def _split_data(X,y):
+    """Split data into train, validation, and test sets without shuffling"""
+
     test_set_log_id = test_sets if test_sets else [X['LogId'].max()] # Use specified test sets or default to the last LogId
+
     # Extract test set 
     X_test = X.loc[X['LogId'].isin(test_set_log_id)]
     y_test = y.loc[y.index.isin(X_test.index)]
+
     # Extract training set
     X_train = X.loc[~X['LogId'].isin(test_set_log_id)]
     y_train = y.loc[y.index.isin(X_train.index)] 
@@ -62,8 +64,8 @@ def split_data(X,y):
     return X_train, X_test, y_train, y_test
 
 
-def print_distribution(y, name):
-    '''Print class distribution of the target variable'''
+def _print_distribution(y, name):
+    """Print class distribution of the target variable"""
 
     unique, counts = np.unique(y, return_counts=True)
     distribution = dict(zip(unique, counts))
@@ -72,8 +74,8 @@ def print_distribution(y, name):
         print(f"  Class {key}: {value} samples")
 
 
-def align_features(df, FEATURES):
-    '''Align features of the prediction dataset with the features used for training'''
+def _align_features(df, FEATURES):
+    """Align features of the prediction dataset with the features used for training"""
 
     # Add missing features with default value 0
     for col in FEATURES:
@@ -83,8 +85,8 @@ def align_features(df, FEATURES):
     return df[FEATURES]
 
 
-def feature_engineering_windowing(df, dataset_name="data1", window_size=2, labels=True):
-    '''Adding feature engineering steps and windowing to the data'''
+def _feature_engineering_windowing(df, dataset_name="data1", window_size=2, labels=True):
+    """Adding feature engineering steps and windowing to the data"""
 
     # Make sure LogId is present for windowing, if not create it based on dataset name
     if 'LogId' not in df.columns:
@@ -111,17 +113,17 @@ def feature_engineering_windowing(df, dataset_name="data1", window_size=2, label
 
 
 def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", window_size=30):
-    '''Full preprocessing pipeline for model selection and training'''
+    """Full preprocessing pipeline for model selection and training"""
 
     # Process the first dataset to initialize X and y, then loop through the rest and concatenate
     print(f"Processing data: {dataset_names[0]}")
     create_future_target(datasets[0], horizon=horizon)
-    X, y = feature_engineering_windowing(datasets[0], dataset_names[0], window_size=window_size)
+    X, y = _feature_engineering_windowing(datasets[0], dataset_names[0], window_size=window_size)
 
     for df, name in zip(datasets[1:], dataset_names[1:]):
         print(f"Processing data: {name}") 
         create_future_target(df, horizon=horizon)
-        X_add, y_add = feature_engineering_windowing(df, name, window_size=window_size) 
+        X_add, y_add = _feature_engineering_windowing(df, name, window_size=window_size) 
 
         common_cols_X = sorted(set.intersection(*(set(df.columns) for df in [X, X_add]))) # Keep only common columns in the same order
 
@@ -130,9 +132,9 @@ def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", wi
         y = pd.concat([y, y_add], ignore_index=True)
 
     # Split data
-    X_train, X_test, y_train, y_test = split_data(X, y)
-    print_distribution(y_train, "Training set") # Print distribution of training set
-    print_distribution(y_test, "Test set") # Print distribution of test set
+    X_train, X_test, y_train, y_test = _split_data(X, y)
+    _print_distribution(y_train, "Training set") # Print distribution of training set
+    _print_distribution(y_test, "Test set") # Print distribution of test set
 
     # Feature reduction
     X_train, selected = fr.shap_feature_importance(X_train, y_train, shap_subset_size=50)
@@ -158,24 +160,23 @@ def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", wi
 
 
 def preprocess_data_predict(df, dataset_name, horizon=HORIZON, window_size=30, add_label=True):
-    '''Full preprocessing pipeline for prediction'''
+    """Full preprocessing pipeline for prediction"""
 
     # Load the latest preprocessed dataset artifact to get the feature names used for training
     latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib"))
     DATASET_PATH = latest["artifact_path"]
 
     artifact = joblib.load(DATASET_PATH)
-
     FEATURES = artifact["feature_names"]
 
     if add_label:
         create_future_target(df, horizon=horizon) # Create future target
 
     # Feature engineering and windowing
-    X, y = feature_engineering_windowing(df, dataset_name, window_size=window_size, labels=add_label)
+    X, y = _feature_engineering_windowing(df, dataset_name, window_size=window_size, labels=add_label)
 
     # Align features of the prediction dataset with the features used for training
-    X = align_features(X, FEATURES)
+    X = _align_features(X, FEATURES)
 
     X = X.drop(columns=['LogId']) # Drop LogId for prediction
 

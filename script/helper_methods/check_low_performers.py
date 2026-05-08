@@ -10,6 +10,7 @@ def analyse_low_performing_datasets(dataset_ids, f1_scores_dict, X_y_list, thres
     below the threshold F1.
     """
 
+    # Identify datasets with low F1 scores
     low_ids = []
     for i, ds_id in enumerate(dataset_ids):
         scores = {name: scores[i] 
@@ -17,6 +18,7 @@ def analyse_low_performing_datasets(dataset_ids, f1_scores_dict, X_y_list, thres
         if any(s < threshold for s in scores.values()):
             low_ids.append((i, ds_id, scores))
 
+    # Print results
     if not low_ids:
         print(f"All datasets performed above the threshold of {threshold}.")
         return []
@@ -25,14 +27,15 @@ def analyse_low_performing_datasets(dataset_ids, f1_scores_dict, X_y_list, thres
         print(f"  Datasets with F1 < {threshold} for any model")
         print(f"{'─'*55}")
 
+    # Analyze each low-performing dataset and print class distribution and scores
     for iloc, ds_id, scores in low_ids:
         _, y = X_y_list[iloc]
         y = np.array(y)
 
-        n_samples   = len(y)
-        n_plug      = (y == 1).sum()
-        n_no_plug   = (y == 0).sum()
-        plug_ratio  = n_plug / n_samples
+        n_samples   = len(y) # Total number of samples
+        n_plug      = (y == 1).sum() # Number of plug samples (class 1)
+        n_no_plug   = (y == 0).sum() # Number of no plug samples (class 0)
+        plug_ratio  = n_plug / n_samples # Ratio of plug samples
 
         print(f"\n  Dataset {ds_id}")
         print(f"  {'─'*40}")
