@@ -112,24 +112,25 @@ def _feature_engineering_windowing(df, dataset_name="data1", window_size=2, labe
     return X, y
 
 
-def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", window_size=30):
+def preprocess_data(datasets, dataset_names, horizon=HORIZON, window_size=30):
     """Full preprocessing pipeline for model selection and training"""
+    
+    X_list, y_list = [], []
 
     # Process the first dataset to initialize X and y, then loop through the rest and concatenate
-    print(f"Processing data: {dataset_names[0]}")
-    create_future_target(datasets[0], horizon=horizon)
-    X, y = _feature_engineering_windowing(datasets[0], dataset_names[0], window_size=window_size)
-
-    for df, name in zip(datasets[1:], dataset_names[1:]):
+    for df, name in zip(datasets, dataset_names):
         print(f"Processing data: {name}") 
         create_future_target(df, horizon=horizon)
         X_add, y_add = _feature_engineering_windowing(df, name, window_size=window_size) 
+        X_list.append(X_add)
+        y_list.append(y_add)
 
-        common_cols_X = sorted(set.intersection(*(set(df.columns) for df in [X, X_add]))) # Keep only common columns in the same order
+    # Keep only common columns in the same order 
+    common_cols_X = sorted(set.intersection(*(set(df.columns) for df in X_list))) 
 
-        # Combine datasets into one
-        X = pd.concat([X[common_cols_X], X_add[common_cols_X]], ignore_index=True)
-        y = pd.concat([y, y_add], ignore_index=True)
+    # Combine datasets into one
+    X = pd.concat([X[common_cols_X] for X in X_list], ignore_index=True)
+    y = pd.concat(y_list, ignore_index=True)
 
     # Split data
     X_train, X_test, y_train, y_test = _split_data(X, y)
@@ -144,18 +145,18 @@ def preprocess_data(datasets, dataset_names, horizon=HORIZON, BASE_PATH = "", wi
     X_test = X_test.drop(columns=to_drop)
     
     # Save data and artifact for later use
-    data_to_save = {
+    print("DatasetNames", dataset_names)
+
+    dl.save_dataset_artifact(
+        data={
         'X_train': X_train,
         'X_test': X_test,
         'y_train': y_train,
         'y_test': y_test,
-    }
-    basePath = BASE_PATH + "data/processed_data/"
-    print("DatasetNames", dataset_names)
-    dataset_name = "data_" + "_".join(name[4:] for name in dataset_names)
-    artifact_path = dl.save_dataset_artifact(data_to_save, dataset_name, basePath)
-    joblib.dump({"artifact_path": artifact_path}, os.path.join(basePath, "LATEST.joblib"))
-
+        }, 
+        dataset_name={"data_" + "_".join(name[4:] for name in dataset_names)}
+    )
+    
     return X_train, X_test, y_train, y_test
 
 

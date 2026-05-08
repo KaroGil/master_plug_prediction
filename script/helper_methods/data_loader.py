@@ -126,9 +126,6 @@ def delete_preprocessed_predict_files(preprocessed_predict_path="./data/processe
 def load_labeled_dataset(dataset_name, LABLED_PATH=LABLED_PATH):
     """Load a single labeled dataset and validate it"""
 
-    # First delete any preprocessed predict files to avoid confusion
-    delete_preprocessed_predict_files()
-
     df = pd.read_csv(LABLED_PATH + f"data{dataset_name}.csv")
 
     # Validate dataset and get any extra columns that are not required
@@ -153,6 +150,9 @@ def load_labeled_datasets(dataset_nr=dataset_nr, LABLED_PATH=LABLED_PATH):
     - `dataset_nr`: list of dataset numbers to load (e.g. [1, 2, 3])
     - `LABLED_PATH`: base path to the labeled datasets
     """
+
+    # First delete any preprocessed predict files to avoid confusion
+    delete_preprocessed_predict_files()
 
     datasets = []
 
@@ -224,6 +224,7 @@ def load_raw_data(path="../data/raw_data/data1/*.csv"):
     df = add_logId_column(df, log_id=path.split("/")[-2][4:])  # Extract dataset number from filename
     print(f"Added LogId column with value: {df['LogId'].iloc[0]}")
 
+    # Validate dataset to check for required columns, numeric types, and frequency consistency
     validate_dataset(
         df=df,
         dataset_name="Loaded Data",
@@ -250,17 +251,21 @@ def load_dataset_artifact(dataset_name: str, base_path: str) -> dict:
 def save_data(data: dict, dataset_name: str, base_path="../data/processed_data/"):
     """Save datasets to CSV files"""
 
-    os.makedirs(base_path, exist_ok=True)
+    os.makedirs(base_path, exist_ok=True) # Check if base path exists, if not create it
+    
+    # Save each dataset in the dictionary to a separate CSV file with the dataset name as prefix
     for key, df in data.items():
         df.to_csv(f"{base_path}{dataset_name}_{key}.csv", index=False)
+    
     print(f"💾 Saved data with base name: {dataset_name} to location {base_path}")
 
 
-def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
+def save_dataset_artifact(data: dict, dataset_name: str, base_path: str = "../data/processed_data/"):
     """Save dataset artifact to a joblib file, including training and test sets, feature names, and dataset name"""
 
-    os.makedirs(base_path, exist_ok=True)
+    os.makedirs(base_path, exist_ok=True) # Check if base path exists, if not create it
 
+    # Construct the artifact dictionary to save
     artifact = {
         "X_train": data["X_train"],
         "X_test": data["X_test"],
@@ -270,7 +275,10 @@ def save_dataset_artifact(data: dict, dataset_name: str, base_path: str):
         "dataset_name": dataset_name,
     }
 
+    # Save the artifact to a joblib file with the dataset name
     path = os.path.join(base_path, f"{dataset_name}.joblib")
     joblib.dump(artifact, path, compress=3)
     print(f"💾 Saved dataset artifact: {path}")
-    return path
+
+    # Update LATEST.joblib to point to the latest saved artifact
+    joblib.dump({"artifact_path": path}, os.path.join(base_path, "LATEST.joblib"))
