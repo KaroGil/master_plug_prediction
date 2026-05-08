@@ -59,18 +59,24 @@ The dataset consists of experimental logs where particles progressively block a 
 
 ## 🏗️ Project structure
 
-TODO: fix this structure to correspond to actual
-
 ```bash
 Master/
 ├── data/
-│ ├── labeled/ # Labeled data
-│ ├── processed_data/ # Cleaned & feature-engineered data
-│ └── raw_data/ # Original experimental data
+│ ├── labeled/ # labeled data
+│ ├── processed_data/ # cleaned & feature-engineered data
+│ │ └── predict/ # cleaned & feature-engineered data used for prediction
+│ └── raw_data/ # original experimental data
+├── figures/ # generated figures for model analysis
 ├── models/ # generated model files
-├── notebooks/ # data labeling
+├── notebooks/
+│ └── label_data.ipynb # data labeling
 ├── plots/ # generated and saved plots
-│ └── horizon_test/ # generated plots from horizon tests
+│ ├── f1_scores/ # f1_score plots
+│ ├── false_alarm_rates/ # false alarm plots
+│ ├── feature_importance/ # feature importance plots
+│ ├── horizon_test/ # generated plots from horizon tests
+│ └── test_sets/ # test set plots
+├── predictions/ # predictions for raw non-labeled data
 ├── script/
 │ ├── helper_methods/
 │ │  ├── config.py # method to fetch configurations
@@ -85,14 +91,18 @@ Master/
 │ │  └── window.py # data windowing and statistical feature
 │ ├── __init__.py
 │ ├── data_prep.py # script for data preperation
+│ ├── compare_model_predictions.py # script for model comparison and analysis
 │ ├── horizon_test.py # script for performing horizon test
 │ ├── model_select.py # script for selecting best model
 │ ├── predict_all.py # script for predicting on all dataset
+│ ├── predict_raw.py # script for predicting one raw dataset
 │ ├── predict.py # script for predicting one dataset
+│ ├── preprocess_predict.py # script/methods for preprocessing data for prediction
 │ ├── print_scores.py # script for printing performance score
-│ └── train.py # script for data preperation and model selction
+│ ├── train.py # script for data preperation and model selction
+│ └── window_test.py # script to determin best data window size
 ├── .gitignore
-├── config.yaml
+├── config.yaml # pipeline and dataset configurations
 ├── README.md
 └── requirements.txt
 ```
@@ -156,7 +166,7 @@ Predicts the outcomes of all datasets present in data/labeled using the best mod
 python -m script.predict_all
 ```
 
-### predict_raw_datafiles.py
+### predict_raw.py
 
 Predicts the outcome of a given raw dataset using the best model saved from running train.py.
 Possible parameters: dataset name to specify which dataset is used for traning. Only 1 dataset can be specified.
@@ -165,13 +175,13 @@ Visualizes the predicted labels.
 Default: dataset1
 
 ```
-python -m script.predict_raw_datafiles {dataset name}
+python -m script.predict_raw{dataset name}
 ```
 
 example
 
 ```
-python -m script.predict_raw_datafiles data2
+python -m script.predict_raw data2
 ```
 
 ### horizon_test.py
