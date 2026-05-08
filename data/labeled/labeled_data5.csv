@@ -1,4 +1,4 @@
-Time,TS outlet pressure (Mean),Pump outlet pressure (Mean),Differential pressure (Mean),Differential pressure (Std Dev),Pressure before pump (Std Dev),Pressure after pump (Std Dev),Plug,Plug_future,LogId
+Time,TS inlet pressure (Mean),Pump outlet pressure (Mean),Differential pressure (Mean),Differential pressure (Std Dev),Pressure before pump (Std Dev),Pressure after pump (Std Dev),Plug,Plug_future,LogId
 2021-08-21 11:07:40.450,0.652198,0.002561,0.216821,0.018072,0.08187,0.004608,0,0.0,5
 2021-08-21 11:07:40.949,0.65055,0.002615,0.216269,0.018405,0.080948,0.004419,0,0.0,5
 2021-08-21 11:07:41.453,0.651297,0.0028,0.215,0.018836,0.07952,0.004669,0,0.0,5
