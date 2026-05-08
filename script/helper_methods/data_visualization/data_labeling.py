@@ -4,6 +4,7 @@ Helper methods used for visualizing used during the labeling process.
 
 import pandas as pd  
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from script.helper_methods.config import get_config
 
 # Config for plots
@@ -17,8 +18,8 @@ plt.rcParams.update({
 
 # Load config
 cfg = get_config()
-
 target_col = cfg["data"]["target"]
+
 
 def visualize_key_column(data, key="Flow rate (Mean)", name=None):
     """
@@ -26,19 +27,24 @@ def visualize_key_column(data, key="Flow rate (Mean)", name=None):
     Used when labeling data. 
     """
 
+    # Check if key column exists
     if key not in data.columns:
         raise ValueError(f"Column '{key}' not found in dataset.")
 
     plt.figure(figsize=(12,6))
+    
+    # Plot the key column over time
     plt.plot(data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index, data[key], label=key)
 
     plt.xlabel("Elapsed_seconds")
     plt.ylabel("Value")
     plt.title(f"Flow rate & Pump outlet pressure over time for {name}" if name else "Flow rate & Pump outlet pressure over time")
+    
+    # If the dataset has a timestamp column, format the x-axis to show time instead of elapsed seconds
     if name == "Labled Dataset":
-        import matplotlib.dates as mdates
         plt.xlabel("Timestamp")
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        
     plt.legend()
     plt.show()
 
@@ -54,6 +60,8 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
     - `extra_id`: If set to 0, nothing extra is plotted. Other numbers might correspond to specific extra lines to plot (e.g. for dataset 7)
     - `ax`: Optional matplotlib axis to plot on. If None, a new figure and axis will be created   
     """
+    
+    # Check if key column exists
     possible_keys = [key, f"{key}_mean"]
     actual_key = next((col for col in possible_keys if col in data.columns), None)
 
@@ -65,7 +73,7 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
         _, ax = plt.subplots(figsize=(12, 6))
         created_figure = True
 
-    x = data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index
+    x = data["Elapsed_seconds"] if "Elapsed_seconds" in data.columns else data.index # Use Elapsed_seconds as X_axis if it exists
 
     # Plot signal
     ax.plot(x, data[actual_key], label=actual_key, alpha=0.5)
@@ -73,6 +81,7 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
     # Plug events
     plug_events = data[data[plug_column] == 1]
 
+    # If there are plug events, plot them as red dots
     if not plug_events.empty:
         x_plug = plug_events["Elapsed_seconds"] if "Elapsed_seconds" in plug_events.columns else plug_events.index
 
@@ -85,6 +94,7 @@ def visualize_plug_event(data, plug_column=target_col, key="Flow rate (Mean)", n
             s=15
         )
 
+    # Add extra vertical lines based on extra_id for specific datasets for better visualization of important events during labeling
     if extra_id == 3:
         # Indicate end of startup noise, first stabilize at 400kg/h
         ax.axvline(pd.to_datetime("2021-09-01 10:59:21.171000"), color="black", linestyle="--", label="Time = 15:37:26")

@@ -16,7 +16,8 @@ from sklearn.metrics import f1_score
 from script.helper_methods.config import get_config
 from script.preprocess_predict import load_preprocessed_data, preped_for_prediction_exists, preprocess_and_save
 from script.helper_methods.data_visualization.f1_score import f1_score_bar_plot
-from script.helper_methods.data_visualization.predictions import plot_all_predictions, plot_test_data_summary, plot_false_alarm_rates
+from script.helper_methods.data_visualization.predictions import plot_all_predictions, plot_test_data_summary
+from script.helper_methods.model_evaluation import plot_false_alarm_rates
 
 # Load config
 cfg = get_config()
@@ -29,6 +30,12 @@ BASE_PATH = "data/labeled/labeled_"
 BASE_PATH_PREPROCESSED_PREDICT = "data/processed_data/predict/"
 
 def predict_all(runId, horizon=HORIZON):
+    """
+    Run predictions on labeled data files using the best trained model. Also visualizes the predicted values for analysis.
+    - `runId`: Identifier used when saving plots for this prediction run.
+    - `horizon`: Prediction horizon used.
+    """
+
     if preped_for_prediction_exists() and horizon == HORIZON:
         # If preprocessed data already exists, load it instead of preprocessing again
         print("Preprocessed data already exists. Skipping preprocessing.")

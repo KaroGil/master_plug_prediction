@@ -45,13 +45,6 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
     ΔP = P_outlet - P_inlet
     """
 
-    df["TS_in_changed_out"] = 0 # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
-
-    if inlet_col not in df.columns:
-        inlet_col = "Pump outlet pressure (Mean)"
-        df["TS_in_changed_out"] = 1
-
-
     df["Pressure_Drop"] = df[outlet_col] - df[inlet_col]
 
     return df
@@ -81,20 +74,12 @@ def feature_engineering_pipeline(df):
 
     return df
 
+
 def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)"):
     """
     Function to calculate Plug Index based on pressure drop.
     Plug index indicates likelihood of plug formation.
     """
-
-    #TODO: remove
-    # Add flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
-    df["TS_in_changed_out"] = 0
-
-    if p_up_col not in df.columns:
-        p_up_col = "Pump outlet pressure (Mean)"
-        df["TS_in_changed_out"] = 1
-
 
     df = df.copy()
     # Check window size

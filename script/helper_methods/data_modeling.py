@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import f1_score, fbeta_score, make_scorer
+from sklearn.metrics import f1_score
 
 from .data_visualization import feature_importance as dv
 from .model_io import save_model, save_scores
@@ -22,6 +22,7 @@ n_iter = cfg["experiment"]["n_iter"]
 HORIZON = cfg["experiment"]["horizon"]
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def leave_one_run_out_cv(groups):
     """
@@ -42,12 +43,6 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
     """Perform Randomized Search with definde CV function and return best model, params and score"""
 
     cv = list(leave_one_run_out_cv(X_train["LogId"])) # Splitting into folds
-    
-    # Scoring metrics
-    scoring = {
-        "F1-score": "f1_weighted",
-        "F2-score": make_scorer(fbeta_score, beta=2, average='weighted')
-    }
 
     X_train = X_train.drop(columns=['LogId']) # drop LogId for modeling
 
@@ -63,8 +58,8 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         estimator=model,
         param_distributions=params,
         n_iter=n_iter,
-        scoring=scoring,
-        refit='F1-score',
+        scoring="f1_weighted",
+        refit=True,
         cv=cv,
         n_jobs=-1,
         verbose=3,
@@ -73,14 +68,11 @@ def tune_random_search(model, X_train, y_train, params, n_iter=40):
         return_train_score=True,
     )
 
-    search.fit(X_train, y_train)
+    search.fit(X_train, y_train) 
 
     print("\nBest parameters:", search.best_params_)
-    idx = search.best_index_
-
-    print("Train F1:", search.cv_results_['mean_train_F1-score'][idx])
-    print("CV F1:", search.cv_results_['mean_test_F1-score'][idx])
-
+    print("Train F1:", search.cv_results_['mean_train_score'][search.best_index_])
+    print("CV F1:",    search.cv_results_['mean_test_score'][search.best_index_])
     print("Best F1 score:", search.best_score_)
 
     # Print all CV results for F1-score

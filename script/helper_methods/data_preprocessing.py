@@ -154,7 +154,8 @@ def preprocess_data(datasets, dataset_names, horizon=HORIZON, window_size=30):
         'y_train': y_train,
         'y_test': y_test,
         }, 
-        dataset_name={"data_" + "_".join(name[4:] for name in dataset_names)}
+        dataset_name="data_" + "_".join(name[4:] for name in dataset_names),
+        base_path="./data/processed_data/"
     )
     
     return X_train, X_test, y_train, y_test

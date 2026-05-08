@@ -14,6 +14,8 @@ from script.helper_methods.data_visualization.predictions import visualize_predi
 
 
 def parse_args():
+    """Parse command-line arguments for dataset selection"""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=int, help="Dataset number, e.g. 1 for data1")
     return parser.parse_args()
@@ -24,6 +26,13 @@ def run_predictions(
     model_path="./models/best_model.joblib",
     output_path="./predictions/predictions.csv",
 ):
+    """
+    Run predictions on raw data files using the best trained model, and save results to CSV. Also visualizes the predicted values for analysis.
+    - `data_path`: Path to the raw data CSV files (supports glob pattern, e.g. "./data/raw_data/data1/*.csv")
+    - `model_path`: Path to the saved trained model (e.g. "./models/best_model.joblib")
+    - `output_path`: Path prefix for saving the predictions CSV file (the actual file will be saved as "{output_path}_{log_id}.csv" where log_id is extracted from the data
+    """
+
     # Load
     df = load_raw_data(data_path)
 
@@ -43,7 +52,6 @@ def run_predictions(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(f"{output_path}_{log_id}.csv", index=False)
     print(f"Predictions saved to {output_path}_{log_id}.csv")
-
 
     visualize_predicted_vs_true(X, predictions, plotLabel=False)
 

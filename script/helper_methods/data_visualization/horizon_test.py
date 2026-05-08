@@ -33,13 +33,15 @@ def plot_test_f1_vs_horizon(
         - `window_size`: Optional integer specifying the window size used in the model, included in the filename when saving the plot.
         - `test_or_val`: String indicating whether the scores are from the "Test" set or "Validation" set, used for labeling the axes and filename when saving the plot.
     """
+
     horizons = np.array(horizons)
     scores = np.array(scores)
 
     plt.figure(figsize=figsize)
 
-    horizon_seconds = [f"{h} ({h}s)" for h in horizons]
+    horizon_seconds = [f"{h} ({h}s)" for h in horizons] # Create labels with seconds for x-axis
 
+    # Plot F1 scores as a line plot with markers
     plt.plot(horizon_seconds, scores,
              marker="o", linewidth=2, label="Test F1" if test_or_val == "Test" else "Validation F1")
 
@@ -52,6 +54,8 @@ def plot_test_f1_vs_horizon(
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
+
+    # Save
     os.makedirs("plots/horizon_test", exist_ok=True)
     if window_size:
         plt.savefig(f"plots/horizon_test/f1_scores_line_plot_{window_size}window_{test_or_val}.png", dpi=300)
@@ -79,21 +83,25 @@ def plot_test_f1_vs_horizon_bar(
         - `window_size`: Optional integer specifying the window size used in the model, included in the filename when saving the plot.
         - `test_or_val`: String indicating whether the scores are from the "Test" set or "Validation" set, used for labeling the axes and filename when saving the plot.
     """
+
     horizons = np.array(horizons)
     scores = np.array(scores)
 
     plt.figure(figsize=figsize)
 
-    x = np.arange(len(horizons)) 
+    x = np.arange(len(horizons)) # Create x positions for the bars
 
+    # Plot F1 scores as a bar plot
     plt.bar(x, scores, width=0.6, alpha=0.8)
 
+    # Add horizontal line for best score and annotate it
     best_score = np.max(scores)
     plt.axhline(best_score, color="red", linestyle="--", linewidth=2)
     plt.text(len(x)-0.5, best_score + 0.005,
              f"Best: {best_score:.3f}",
              color="red", ha="right")
-    
+
+    # Annotate each bar with its F1 score
     for i in range(len(x)):
         plt.text(i, scores[i] // 2, f"{scores[i]:.3f}", ha='center')
 
@@ -101,13 +109,15 @@ def plot_test_f1_vs_horizon_bar(
     plt.ylabel(f"F1 Score ({test_or_val} Set)")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
 
-    horizon_seconds = [f"{h} ({h}s)" for h in horizons]
+    horizon_seconds = [f"{h} ({h}s)" for h in horizons] # Create labels with seconds for x-axis
     plt.xticks(x, horizon_seconds)
 
     if invert_xaxis:
         plt.gca().invert_xaxis()
 
     plt.tight_layout()
+
+    # Save
     os.makedirs("plots/horizon_test", exist_ok=True)
     if window_size:
         plt.savefig(f"plots/horizon_test/f1_scores_bar_plot_{window_size}window_{test_or_val}_{horizons}.png", dpi=300)

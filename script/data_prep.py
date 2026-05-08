@@ -12,6 +12,9 @@ cfg = get_config()
 dataset_nr = cfg['data']['datasets']
 
 def load_and_preprocess_data():
+    """
+    Load the labeled datasets, preprocess the data, and split it into training and testing sets.
+    """
     
     # Load labeled datasets
     datasets = load_labeled_datasets()

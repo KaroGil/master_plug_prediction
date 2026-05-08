@@ -3,12 +3,12 @@ This module contains helper methods for visualizing feature importance of the tr
 """
 
 import os
+import shap
 import numpy as np
 import pandas as pd  
 import matplotlib.pyplot as plt
-import shap
-from sklearn.inspection import permutation_importance
 from script.helper_methods.config import get_config
+from sklearn.inspection import permutation_importance
 from script.helper_methods.feature_reduction import compute_shap_values
 
 # Config for plots
@@ -81,6 +81,7 @@ def plot_feature_importance(model, X, y, horizon,
     plt.xlabel("Importance")
     plt.tight_layout()
 
+    # Save
     os.makedirs("plots/feature_importance", exist_ok=True)
     plt.savefig(f"plots/feature_importance/{horizon}.png", dpi=300)
     plt.close()

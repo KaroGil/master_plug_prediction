@@ -356,3 +356,55 @@ def false_alarm_analysis(y_true, y_pred, dataset_id,
     print(f"  True positives : {tp_mask.sum()}")
     print(f"  False alarms   : {fp_mask.sum()}")
     print(f"  Missed plugs   : {fn_mask.sum()}")
+
+
+def plot_false_alarm_rates(dataset_ids, X_y_list, y_preds, runId, threshold=0.05):
+    """
+    Calculates and plots the false alarm rate for datasets with no plug events.
+    
+    - `dataset_ids`: List of dataset IDs
+    - `X_y_list`: List of tuples (X, y) for each dataset
+    - `y_preds`: List of predicted target arrays
+    - `runId`: Unique identifier for the run, used for saving the figure
+    - `threshold`: False alarm rate threshold to display as a reference line (default: 0.05)
+    """
+    no_plug_dataset_ids = []
+    false_alarm_rates = []
+
+    # Calculate false alarm rate for datasets with no plug events
+    for dataset_id, (_, y), y_pred in zip(dataset_ids, X_y_list, y_preds):
+        if y.sum() == 0:
+            tn, fp, _, _ = confusion_matrix(y, y_pred, labels=[0, 1]).ravel()
+            far = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+            no_plug_dataset_ids.append(dataset_id)
+            false_alarm_rates.append(far)
+            print(f"Dataset {dataset_id} - False Alarm Rate: {far:.4f} ({fp} false alarms out of {fp+tn} timesteps)")
+
+    if not no_plug_dataset_ids:
+        print("No no-plug datasets found, skipping false alarm rate plot.")
+        return
+
+    plt.figure(figsize=(10, 5))
+    # Create a bar plot of false alarm rates for no-plug datasets, with a horizontal line indicating the threshold
+    bars = plt.bar(range(len(no_plug_dataset_ids)), false_alarm_rates, color="steelblue")
+    plt.xticks(range(len(no_plug_dataset_ids)), [str(d) for d in no_plug_dataset_ids])
+    plt.axhline(y=threshold, color="red", linestyle="--", label=f"{int(threshold*100)}% threshold")
+    plt.xlabel("Dataset ID")
+    plt.ylabel("False Alarm Rate")
+    plt.title("False Alarm Rate on No-Plug Datasets")
+    plt.ylim(0, max(false_alarm_rates) * 1.2 + 0.01)
+    plt.legend()
+
+    # Annotate each bar with its false alarm rate value
+    for bar, far in zip(bars, false_alarm_rates):
+        plt.text(bar.get_x() + bar.get_width() / 2,
+                 bar.get_height() + 0.001,
+                 f"{far:.3f}",
+                 ha="center", va="bottom", fontsize=9)
+
+    # Save
+    os.makedirs("plots/false_alarm_rates", exist_ok=True)
+    plt.savefig(f"plots/false_alarm_rates/{runId}.png", dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"📊 False alarm rate plot saved as plots/false_alarm_rates/{runId}.png")
+
