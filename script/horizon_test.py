@@ -8,6 +8,7 @@ import pandas as pd
 from script.predict_all import predict_all
 from script.helper_methods.config import get_config
 from script.helper_methods.data_modeling import model_data
+from script.helper_methods.data_loader import load_labeled_datasets
 from script.helper_methods.data_preprocessing import preprocess_data
 from script.helper_methods.data_visualization.horizon_test import plot_test_f1_vs_horizon, plot_test_f1_vs_horizon_bar
 
@@ -18,11 +19,9 @@ dataset_nr = cfg['data']['datasets']
 LABLED_PATH = cfg['data']['LABELED_PATH']
 freq = cfg["data"]["frequency"]
 
-datasets = []
 
-# Additional data to include in training
-for i in dataset_nr:
-    datasets.append(pd.read_csv(LABLED_PATH + f"data{i}.csv"))
+# Load data 
+datasets = load_labeled_datasets()
 
 # Define horizons to test (in seconds) and convert to number of samples based on data frequency
 horizons = [1, 5, 10, 15, 25, 50, 100, 500]  # seconds
