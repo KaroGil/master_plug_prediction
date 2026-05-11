@@ -93,6 +93,7 @@ def _feature_engineering_windowing(df, dataset_name="data1", window_size=2, labe
         df['LogId'] = dataset_name[4:]
 
     # Apply feature engineering pipeline
+    print("Applying feature engineering pipeline...")
     df = fe.feature_engineering_pipeline(df) 
 
     # Add time derivative features
