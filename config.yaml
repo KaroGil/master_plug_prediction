@@ -17,7 +17,6 @@ data:
       "Time",
       "LogId",
       "Plug",
-      "Plug_future",
       "TS inlet pressure (Mean)",
       "TS outlet pressure (Mean)",
       "Pump outlet pressure (Mean)",
@@ -27,6 +26,5 @@ data:
       "TS outlet pressure (Mean)",
       "Pump outlet pressure (Mean)",
       "Plug",
-      "Plug_future",
       "LogId",
     ] # Columns that should contain numeric data, for validation purposes

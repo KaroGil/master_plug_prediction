@@ -108,6 +108,9 @@ def validate_dataset(df, dataset_name, required_cols, numeric_cols, expected_hz,
         print(f"⚠️  Dataset {dataset_name}: no time column '{time_col}' found, skipping frequency check")
 
     print(f"✅ Dataset {dataset_name} validated ({len(df)} rows, {len(df.columns)} columns)")
+    
+    if "Plug_future" in df.columns:
+        print("Plug_future found in dataset, indicating it contains labels for supervised learning.")
 
     return extra_cols
 
