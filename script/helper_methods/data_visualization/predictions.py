@@ -43,21 +43,9 @@ def visualize_predicted_vs_true(df, y_pred, plotLabel=True):
     plt.figure(figsize=(12,6))
 
     pressure_col = _check_pressure_col(df)
+    y_true = df[target_col] if target_col else None
 
-    # Plot pressure signal
-    plt.plot(df.index, df[pressure_col], label={pressure_col}, alpha=0.5, color="darkorange") 
-
-    # Highlight true target events
-    if plotLabel:
-        plug_events = df[df[target_col] == 1]
-        plt.scatter(plug_events.index, plug_events[pressure_col], color="blue", label="Plug=1 (Pressure)", zorder=5, marker='x')
-        
-    # Highlight predicted Plug events
-    plug_events = df[y_pred == 1]
-    plt.scatter(plug_events.index, plug_events[pressure_col], color="green", label="Predicted plug (Pressure)", zorder=7, marker='.') 
-    plt.xlabel("Elapsed_seconds")
-
-    plt.ylabel("Pressure [Pa]")
+    _plot_pressure_and_events(plt.gca(), df, y_true, y_pred, pressure_col, show_true=plotLabel)
 
     plt.legend()
     plt.show()
@@ -210,5 +198,3 @@ def plot_test_data_summary(X_y_list, y_preds, dataset_ids, runId):
     plt.savefig(f"plots/test_sets/{runId}.png", dpi=300, bbox_inches='tight')
     print(f"Plot saved as plots/test_sets/{runId}.png")
     plt.close()
-
-

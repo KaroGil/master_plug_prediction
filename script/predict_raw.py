@@ -24,7 +24,7 @@ def parse_args():
 def run_predictions(
     data_path="./data/raw_data/data1/*.csv",
     model_path="./models/best_model.joblib",
-    output_path="./predictions/predictions.csv",
+    output_path="./predictions/predictions",
 ):
     """
     Run predictions on raw data files using the best trained model, and save results to CSV. Also visualizes the predicted values for analysis.

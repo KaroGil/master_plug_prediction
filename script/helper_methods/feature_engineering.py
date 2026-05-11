@@ -12,6 +12,7 @@ from script.helper_methods.config import get_config
 # Load config
 cfg = get_config()
 seed = cfg["experiment"]["random_state"]
+freq = cfg["data"]["frequency"]
 non_feature_columns = cfg["data"]["non_feature_columns"]
 
 # Derivatives (d/dt) + (d2/dt2)
@@ -75,7 +76,7 @@ def feature_engineering_pipeline(df):
     return df
 
 
-def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)"):
+def plug_index(df, window_size=10, p_up_col="TS inlet pressure (Mean)", p_down_col="TS outlet pressure (Mean)"):
     """
     Function to calculate Plug Index based on pressure drop.
     Plug index indicates likelihood of plug formation.
@@ -83,7 +84,7 @@ def plug_index(df, window_size=0.5, p_up_col="TS inlet pressure (Mean)", p_down_
 
     df = df.copy()
     # Check window size
-    w = int(window_size / 0.05)
+    w = int(window_size / freq)
     if w < 2:
         raise ValueError("Window size too small for plug index calculation.")
     

@@ -20,9 +20,6 @@ LABLED_PATH = cfg['data']['LABELED_PATH']
 freq = cfg["data"]["frequency"]
 
 
-# Load data 
-datasets = load_labeled_datasets()
-
 # Define horizons to test (in seconds) and convert to number of samples based on data frequency
 horizons = [1, 5, 10, 15, 25, 50, 100, 500]  # seconds
 horizons = [h * freq for h in horizons]  # convert to number of samples
@@ -33,6 +30,9 @@ scores = {}
 # Run the modeling pipeline for each horizon and store the scores
 for horizon in horizons:
     print(f"\n\n=== HORIZON: {horizon} samples ===")
+
+    # Load data 
+    datasets = load_labeled_datasets()
 
     # Preprocess data for the current horizon
     X_train, X_test, y_train, y_test = preprocess_data(datasets, [f"data{i}" for i in dataset_nr], horizon=horizon)
