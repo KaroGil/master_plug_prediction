@@ -166,8 +166,7 @@ def preprocess_data_predict(df, dataset_name, horizon=HORIZON, window_size=30, a
     """Full preprocessing pipeline for prediction"""
 
     # Load the latest preprocessed dataset artifact to get the feature names used for training
-    latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib"))
-    DATASET_PATH = latest["artifact_path"]
+    DATASET_PATH = dl.get_dataset_path()
 
     artifact = joblib.load(DATASET_PATH)
     FEATURES = artifact["feature_names"]
