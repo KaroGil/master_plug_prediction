@@ -240,13 +240,31 @@ def load_raw_data(path="../data/raw_data/data1/*.csv"):
     return df
 
 
-def load_dataset_artifact(dataset_name: str, base_path: str) -> dict:
-    """Load dataset artifact from a joblib file and return the contained data."""
+def get_dataset_path():
+    """Get the path to the latest preprocessed dataset path from the LATEST.joblib file"""
 
-    path = os.path.join(base_path, f"{dataset_name}.joblib")
-    artifact = joblib.load(path)
-    return artifact
+    latest = joblib.load(os.path.join("./data/processed_data/", "LATEST.joblib")) # Load file
 
+    return latest["artifact_path"] # Return the path to the latest dataset artifact
+
+
+def load_preprocessed_dataset():
+    """Load the latest preprocessed dataset artifact containing training and test sets"""
+
+    # Find the latest dataset artifact
+    DATASET_PATH = get_dataset_path()
+
+    # Load the dataset artifact
+    artifact = joblib.load(DATASET_PATH)
+    print("Using dataset:", DATASET_PATH)
+
+    # Extract the training and testing data from the artifact
+    X_train = artifact["X_train"]
+    y_train = artifact["y_train"]
+    X_test = artifact["X_test"]
+    y_test = artifact["y_test"]
+
+    return X_train, y_train, X_test, y_test
 
 # ---- Saving methods ----
 

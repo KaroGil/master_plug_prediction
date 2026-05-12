@@ -45,7 +45,10 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
     Calculate pressure drop across the pump as a feature.
     ΔP = P_outlet - P_inlet
     """
-    df["TS_in_changed_out"] = 0 # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
+    
+    # Flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
+    if "TS_in_changed_out" not in df.columns:
+        df["TS_in_changed_out"] = 0 
     if inlet_col not in df.columns:
         inlet_col = "Pump outlet pressure (Mean)"
         df["TS_in_changed_out"] = 1
@@ -54,6 +57,7 @@ def pressure_drop_feature(df, inlet_col="TS inlet pressure (Mean)", outlet_col="
     df["Pressure_Drop"] = df[outlet_col] - df[inlet_col]
 
     return df
+
 
 def pump_pressure_fraction_feature(df, ts_pressure_col="Pressure_Drop", outlet_col="Pump outlet pressure (Mean)", clip=1e4):
     """
@@ -88,7 +92,8 @@ def plug_index(df, window_size=10, p_up_col="TS inlet pressure (Mean)", p_down_c
     """
 
     # Add flag to indicate if inlet column was changed to pump outlet pressure (for cases where TS inlet pressure is not available)
-    df["TS_in_changed_out"] = 0
+    if "TS_in_changed_out" not in df.columns:
+        df["TS_in_changed_out"] = 0
     if p_up_col not in df.columns:
         p_up_col = "Pump outlet pressure (Mean)"
         df["TS_in_changed_out"] = 1
