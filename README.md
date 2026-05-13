@@ -145,19 +145,21 @@ python -m script.train
 ### predict.py
 
 Predicts the outcome of a given labeled dataset using the best model saved from running train.py.
-Possible parameters: dataset name to specify which dataset is used for traning. Only 1 dataset can be specified.
+Possible parameters: dataset name to specify which dataset is used for traning. Only 1 dataset can be specified. Trained model to use for prediction, defaults to using the best model but any of the trained models can be specified if they are saved in the models/ folder.
 Visualizes true labels vs. predicted labels for analysis.
-Default: dataset1
+Default: dataset1, best_model
 
 ```
-python -m script.predict {dataset name}
+python -m script.predict {dataset name} {model}
 ```
 
 example
 
 ```
-python -m script.predict data2
+python -m script.predict data2 RF
 ```
+
+Returns the visualization using RF on dataset 2.
 
 ### predict_all.py
 
