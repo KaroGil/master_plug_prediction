@@ -61,16 +61,16 @@ def _plot_pressure_and_events(ax, X, y_true, y_pred, pressure_col, show_true=Tru
     if show_true and y_true is not None:
         true_plug_events = X[y_true == 1]   
         if pressure_col and pressure_col in X.columns:
-            ax.scatter(true_plug_events.index, true_plug_events[pressure_col], color="red", label="True Plug=1 (Pressure)", zorder=6, marker='x', s=50, linewidth=2)
+            ax.scatter(true_plug_events.index, true_plug_events[pressure_col], color="blue", label="True Plug=1 (Pressure)", zorder=6, marker='x', s=50, linewidth=2)
     
     # Highlight predicted Plug events, on all data
     if y_pred is not None:
         plug_events = X[y_pred == 1]
         if pressure_col and pressure_col in X.columns:
-            ax.scatter(plug_events.index, plug_events[pressure_col], color="yellow", label="Predicted plug (Pressure)", zorder=7, marker='.', s=50)  
+            ax.scatter(plug_events.index, plug_events[pressure_col], color="red", label="Predicted plug (Pressure)", zorder=7, marker='.', s=50)  
      
     ax.set_xlabel("Elapsed_seconds")
-    ax.set_ylabel("Pressure [Pa]")
+    ax.set_ylabel("Pressure [bar]")
 
 
 def _collect_unique_legend_handles(axes):
@@ -101,9 +101,9 @@ def _plot_one(ax, df, y_pred, figureNum, y, dataset_id = None, pressure_col="Pum
     test_set_nr = max(dataset_nrs)
     test_set_nrs = test_sets if test_sets else [test_set_nr]
     train_set_nrs = [nr for nr in dataset_nrs if nr not in test_set_nrs]
-    
+
     # Plot pressure and events
-    _plot_pressure_and_events(ax, df, y, y_pred, pressure_col, show_true={shown_id not in test_set_nrs})
+    _plot_pressure_and_events(ax, df, y, y_pred, pressure_col, show_true=shown_id not in test_set_nrs)
 
     # Set title based on dataset ID and whether it's in the test set or training set
     if shown_id in test_set_nrs:
