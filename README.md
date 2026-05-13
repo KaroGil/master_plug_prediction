@@ -90,8 +90,9 @@ Master/
 │ │  ├── models.py # models and hyperparameters
 │ │  └── window.py # data windowing and statistical feature
 │ ├── __init__.py
-│ ├── data_prep.py # script for data preperation
 │ ├── compare_model_predictions.py # script for model comparison and analysis
+│ ├── computational_benchmark.py # script for evaluating computational cost
+│ ├── data_prep.py # script for data preperation
 │ ├── horizon_test.py # script for performing horizon test
 │ ├── model_select.py # script for selecting best model
 │ ├── predict_all.py # script for predicting on all dataset
@@ -251,4 +252,18 @@ Performs and visualizes:
 
 ```
 python -m script.compare_model_predictions
+```
+
+### computational_benchmark.py
+
+Used to evaluatet the computational cost of the models.
+Measures:
+
+- Training time (s)
+- Prediction time (s)
+- Training memory (MB)
+- Prediction memory (MB)
+
+```
+python -m script.computational_benchmark
 ```
